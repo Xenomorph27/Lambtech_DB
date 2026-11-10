@@ -11,7 +11,7 @@ import re
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 UNIQUE_VIOLATION = "23505"
 FOREIGN_KEY_VIOLATION = "23503"
@@ -39,6 +39,11 @@ def _key_detail(exc: DBAPIError) -> str:
 
 
 def map_db_error(exc: DBAPIError, method: str):
+    # The database could not be reached or refused the login. Answered here,
+    # inside the app, so the reply carries CORS headers: an unhandled 500
+    # leaves without them and the browser misreports it as a network failure.
+    if isinstance(exc, OperationalError) and getattr(exc.orig, "pgcode", None) is None:
+        return 503, "The database is unreachable or refused the connection. Check DATABASE_URL on the server."
     code = getattr(getattr(exc, "orig", None), "pgcode", None)
     if code == UNIQUE_VIOLATION:
         return 409, f"That already exists: {_key_detail(exc) or _message(exc)}"

@@ -39,3 +39,20 @@ def test_staff_me_200(client):
     body = response.json()
     assert (body["email"], body["auth"]) == (STAFF_EMAIL, "supabase")
     assert body["user_id"] == "user-1"
+
+
+def test_database_refusal_is_a_clear_503_with_cors(client, monkeypatch):
+    """A refused database login must reach the browser as a readable error, not a header-less 500."""
+    import psycopg2
+    from sqlalchemy.exc import OperationalError
+
+    import crud
+
+    def refuse(*args, **kwargs):
+        raise OperationalError("select 1", {}, psycopg2.OperationalError('FATAL:  password authentication failed for user "postgres"'))
+
+    monkeypatch.setattr(crud, "list_rows", refuse)
+    response = client.get("/contacts", headers={**bearer(), "Origin": "http://localhost:5173"})
+    assert response.status_code == 503
+    assert "database" in response.json()["detail"].lower()
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
