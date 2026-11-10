@@ -28,7 +28,7 @@ backend/app/           FastAPI: staff login, CRUD routes, error mapping
 backend/tests/         pytest, against a real local Postgres
 frontend/              React 19 + Vite + Tailwind 4, the "Client Desk" design system
 scripts/test-db.ps1    throwaway Postgres for the tests
-render.yaml            Render Blueprint (API + static site)
+render.yaml            Render Blueprint for the API; frontend/vercel.json for the screens
 ```
 
 ## Run it locally
