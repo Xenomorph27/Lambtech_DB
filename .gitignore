@@ -238,3 +238,7 @@ frontend/dist/
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# Local-only files
+/.claude/
+.env.local
