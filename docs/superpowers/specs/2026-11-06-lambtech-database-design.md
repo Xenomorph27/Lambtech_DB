@@ -1,7 +1,7 @@
 # LambTech Database — Design Spec
 
 - **Date:** 2026-11-06
-- **Status:** Draft, awaiting review
+- **Status:** Approved for build (2026-11-10), with a frontend and a Render-hosted backend added
 - **Repo:** `Xenomorph27/Lambtech_DB` (Supabase project connected through the GitHub integration)
 - **Scope:** lambtech.in only. hire.lambtech.in comes later.
 
@@ -251,13 +251,68 @@ All views are created with `security_invoker = true` so row-level security appli
 
 ## 9. Security
 
-- Row-level security **enabled on every table**.
-- v1 policy: the `authenticated` role has full read/write; the `anon` role has **no** access.
-  The service role (server-side code) bypasses RLS as usual.
-- Public sign-ups are turned off in Supabase Auth, so only invited team members are `authenticated`.
-- Finer roles (e.g. a team member who can't see payments) are out of scope until there is more than one kind of user.
+Same model as the Client Desk CRM:
 
-## 10. Repository layout and deployment
+- The browser **never reads tables directly**. Every read and write goes through the FastAPI backend.
+- Row-level security is **enabled on every table** and **nothing is granted** to Supabase's
+  `anon` and `authenticated` roles, so the public publishable key can read nothing.
+- The backend connects as the database owner through Supabase's session pooler.
+- Staff sign in with Supabase Auth (email + password, invite only). The backend checks every
+  request's token against Supabase's published signing keys, then checks the email is in the
+  `STAFF_EMAILS` setting. A valid login that is not staff gets 403. Only `/health` is public.
+- Public sign-ups are turned off in Supabase Auth.
+- Finer roles are out of scope until there is more than one kind of user.
+
+## 10. Application
+
+### 10.1 Hosting
+
+| Piece | Where | Notes |
+|---|---|---|
+| Database + staff logins | Supabase project `Lambtech` (ref `yxhnejjquxiretpxxxvm`, ap-south-1 Mumbai) | |
+| Backend (FastAPI) | Render web service, free plan | kept awake by a GitHub Actions ping to `/health` every 10 min, which also keeps the free Supabase project from pausing |
+| Frontend (React) | Render static site, free | never sleeps |
+
+### 10.2 Backend API
+
+FastAPI, SQLAlchemy 2, psycopg2, PyJWT — the CRM's stack. All routes except `/health` require staff.
+
+| Route | Methods | Notes |
+|---|---|---|
+| `/health` | GET | no database call |
+| `/me` | GET | the signed-in staff member |
+| `/companies`, `/contacts`, `/emails-sent`, `/responses`, `/leads`, `/transactions`, `/milestones`, `/payments`, `/suppressions` | GET list, GET one, POST, PATCH, DELETE | list filters: `/responses?category=`, `/milestones?transaction_id=`, `/payments?transaction_id=`, `/emails-sent?contact_id=`, `/responses?contact_id=` |
+| `/leads`, `/transactions` | GET | return the `leads_view` / `transactions_view` columns |
+| `/contacts/{id}/anonymize` | POST | calls `anonymize_contact()` |
+| `/stats/overview` | GET | counts and sums for the Overview screen |
+
+Database errors are turned into plain messages: duplicate → 409, blocked delete (foreign key) →
+409 "still has related records", trigger refusal (e.g. suppressed address) or failed check → 422.
+IDs are UUIDs. `suppressions` supports list, create and delete only.
+
+### 10.3 Frontend
+
+React 19 + Vite + Tailwind 4, a port of the Client Desk design system (`frontend/DESIGN-SPEC.md`
+in the CRM repo): same tokens, dark operations-desk look, per-screen hue on chrome only,
+DataTable, drawers, chips and stat tiles. Branded **LambTech Desk**. Currency shown as ₹ (en-IN).
+
+| Group | Screen | Route | Hue |
+|---|---|---|---|
+| — | Overview | `/` | `#3d9bff` |
+| Pipeline | Emails sent | `/emails` | `#d96bff` |
+| Pipeline | Responses (tabs: Unclassified · A · B) | `/responses` | `#ff7eb6` |
+| Pipeline | Leads | `/leads` | `#17c8d4` |
+| Pipeline | Transactions | `/transactions` | `#55d94f` |
+| Records | Contacts | `/contacts` | `#2fd08a` |
+| Records | Companies | `/companies` | `#7b85ff` |
+| Safety | Do-not-email | `/suppressions` | `#ff6f59` |
+
+- Lead priority uses the heat ramp: Hot = solid crimson, Warm = orange, Cold = outline.
+- The Responses drawer has one-click category buttons; marking a reply Positive shows the lead it created.
+- The Transactions drawer shows progress, paid vs. remaining, a milestone checklist and the payments list, with add/edit for both.
+- A Lead drawer has "Start transaction".
+
+## 11. Repository layout and deployment
 
 ```
 supabase/
@@ -266,20 +321,27 @@ supabase/
     <timestamp>_init_schema.sql      -- extensions, enums, tables, constraints
     <timestamp>_triggers.sql         -- functions and triggers from §6
     <timestamp>_views.sql            -- views from §7
-    <timestamp>_rls.sql              -- policies from §9
-  tests/
-    *.sql                            -- pgTAP tests
-  seed.sql                           -- small fake data set for local/branch testing only
-docs/superpowers/specs/              -- this spec
+    <timestamp>_rls.sql              -- grants and RLS from §9
+backend/
+  app/                               -- FastAPI (main, auth, settings, database, models, schemas, crud, routers)
+  tests/                             -- pytest, against a real Postgres
+frontend/                            -- React app
+scripts/                             -- local test-database helper
+render.yaml                          -- Render Blueprint: backend + static site
+.github/workflows/keep-awake.yml
+docs/
 ```
 
 **Important:** with the Supabase GitHub integration, migrations merged into the production
 branch (`main`) are applied to the live database. All work happens on feature branches; merging
-to `main` is the deploy step and is done only after review.
+to `main` is the deploy step and is done only after review. The backend does **not** run
+migrations itself.
 
-## 11. Testing
+## 12. Testing
 
-pgTAP tests in `supabase/tests/`, run with `supabase test db`, cover every rule in §6 and §7:
+pytest, run against a throwaway local Postgres 18 that `scripts/test-db.ps1` creates on port 54329,
+with the migrations applied in order. Database tests cover every rule in §5–§7; API tests cover
+auth (401/403), each resource's CRUD, and the error mapping. The suite covers:
 
 - duplicate contact email (different case / extra spaces) is rejected
 - outreach to a suppressed address is rejected; transactional to an `unsubscribed` address is allowed; any email to a `bounced` address is rejected
@@ -290,16 +352,16 @@ pgTAP tests in `supabase/tests/`, run with `supabase test db`, cover every rule 
 - `transactions_view` paid/remaining/progress/overdue values for a sample transaction
 - completing the last milestone completes the transaction; un-doing one re-activates it
 - `anonymize_contact()` blanks personal data and adds the suppression
-- `anon` role can read nothing
+- `anon` and `authenticated` roles can read nothing
 
-Tests need a local Postgres (Docker + `supabase start`). If Docker is not available, they run
-against a Supabase preview branch instead.
+The frontend is checked by a production build and by using every screen in a browser against
+the local backend.
 
-## 12. Out of scope (for now)
+## 13. Out of scope (for now)
 
-- The email-sending engine and cold outreach (bucket list)
+- The email-sending engine and cold outreach (bucket list). Emails are recorded by hand on the Emails screen for now.
 - Connecting the lambtech.in form, inbox, Postmark or Gmail to these tables
 - AI classification of replies (the `classified_by` column is ready for it)
-- An admin UI (the Supabase dashboard is the UI for v1)
+- Managing staff from the app (staff = `STAFF_EMAILS` for v1)
 - Merging duplicate contacts
 - hire.lambtech.in
