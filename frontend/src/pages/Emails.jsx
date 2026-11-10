@@ -12,7 +12,7 @@ import { DetailList, DetailRow, DetailSection, Drawer } from '../components/ui/D
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.jsx'
 import { EmptyState } from '../components/ui/EmptyState.jsx'
 import { FormDrawer, optionsFrom } from '../components/data/FormDrawer.jsx'
-import { formatDateTime, relativeTime } from '../lib/format.js'
+import { formatDateTime, fromInputDateTime, relativeTime, toInputDateTime } from '../lib/format.js'
 import { EMAIL_KINDS, EMAIL_STATUSES, emailKindLabel, emailStatusMeta } from '../lib/domain.js'
 import { byId, matches, optionsOf } from '../lib/lookup.js'
 
@@ -24,7 +24,11 @@ const BLANK = {
   body_text: '',
   status: 'sent',
   provider: '',
+  sent_at: '',
 }
+
+/** A fresh form, stamped with the current local time. */
+const blank = () => ({ ...BLANK, sent_at: toInputDateTime() })
 
 export default function Emails() {
   const emails = useAsync(() => emailsApi.list(), [])
@@ -83,7 +87,7 @@ export default function Emails() {
   ]
 
   async function onSave(values) {
-    const payload = { ...values, provider: values.provider || null }
+    const payload = { ...values, provider: values.provider || null, sent_at: fromInputDateTime(values.sent_at) }
     const ok = await save.run(() => (editing?.id ? emailsApi.update(editing.id, editPayload(payload)) : emailsApi.create(payload)))
     if (ok) {
       setEditing(null)
@@ -122,7 +126,7 @@ export default function Emails() {
         count={emails.loading ? null : rows.length}
         description="Table 1: everything that went out"
         actions={
-          <Button variant="primary" onClick={() => openForm({ ...BLANK })}>
+          <Button variant="primary" onClick={() => openForm(blank())}>
             <Plus size={14} />
             Record email
           </Button>
@@ -166,7 +170,7 @@ export default function Emails() {
                 title="Nothing sent yet"
                 body="Record each outreach, follow-up or transactional email here so replies can be matched to it."
                 action={
-                  <Button variant="primary" onClick={() => openForm({ ...BLANK })}>
+                  <Button variant="primary" onClick={() => openForm(blank())}>
                     Record the first email
                   </Button>
                 }
@@ -207,7 +211,17 @@ export default function Emails() {
                 <MailWarning size={14} /> Mark bounced
               </Button>
             )}
-            <Button variant="primary" onClick={() => openForm({ ...BLANK, ...selected, provider: selected.provider ?? '' })}>
+            <Button
+              variant="primary"
+              onClick={() =>
+                openForm({
+                  ...BLANK,
+                  ...selected,
+                  provider: selected.provider ?? '',
+                  sent_at: toInputDateTime(selected.sent_at ?? selected.created_at),
+                })
+              }
+            >
               Edit
             </Button>
           </>
@@ -295,7 +309,8 @@ function formFields(contacts, isEdit) {
         ]),
     { name: 'kind', label: 'Kind', type: 'select', span: 1, options: optionsFrom(EMAIL_KINDS, emailKindLabel) },
     { name: 'status', label: 'Status', type: 'select', span: 1, options: optionsFrom(EMAIL_STATUSES, (s) => emailStatusMeta(s).label) },
-    { name: 'from_email', label: 'From', type: 'email', required: true, placeholder: 'you@lambtech.in' },
+    { name: 'from_email', label: 'From', type: 'email', required: true, placeholder: 'you@lambtech.in', span: 1 },
+    { name: 'sent_at', label: 'Sent at', type: 'datetime-local', required: true, span: 1 },
     { name: 'subject', label: 'Subject', required: true },
     { name: 'body_text', label: 'Body', type: 'textarea', rows: 6, nullable: true },
     { name: 'provider', label: 'Sent through', placeholder: 'gmail, titan, postmark', nullable: true },

@@ -21,7 +21,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog.jsx'
 import { EmptyState } from '../components/ui/EmptyState.jsx'
 import { Select, TextInput } from '../components/ui/Field.jsx'
 import { FormDrawer, optionsFrom } from '../components/data/FormDrawer.jsx'
-import { formatAmount, formatAmountExact, formatDate, toInputDate } from '../lib/format.js'
+import { formatAmount, formatAmountExact, formatDate, toInputDate, todayInput } from '../lib/format.js'
 import { PAYMENT_METHODS, TRANSACTION_STATUSES, paymentMethodLabel, transactionStatusMeta } from '../lib/domain.js'
 import { byId, matches, optionsOf } from '../lib/lookup.js'
 
@@ -425,7 +425,7 @@ function Milestones({ transaction, onChange }) {
 /** Money in. The totals above are recomputed by the database from these rows. */
 function Payments({ transaction, onChange }) {
   const list = useAsync(() => paymentsApi.list({ transaction_id: transaction.id }), [transaction.id])
-  const [form, setForm] = useState({ amount: '', paid_on: toInputDate(new Date().toISOString()), method: 'bank_transfer', reference: '' })
+  const [form, setForm] = useState({ amount: '', paid_on: todayInput(), method: 'bank_transfer', reference: '' })
   const act = useSave()
   const rows = (list.data ?? []).slice().sort((a, b) => (a.paid_on < b.paid_on ? 1 : -1))
 

@@ -66,6 +66,26 @@ export function relativeTime(value) {
   return (ago / 365).toFixed(1) + ' years ago'
 }
 
+const pad = (n) => String(n).padStart(2, '0')
+
+/** Today, in the browser's own time zone, for an <input type="date">. */
+export function todayInput() {
+  const d = new Date()
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+}
+
+/** A moment for an <input type="datetime-local">, in local time; now when no value. */
+export function toInputDateTime(value) {
+  const d = value ? new Date(value) : new Date()
+  if (Number.isNaN(d.getTime())) return ''
+  return todayInputFor(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+}
+
+const todayInputFor = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+
+/** The reverse: what a datetime-local input holds, as an ISO instant for the API. */
+export const fromInputDateTime = (value) => (value ? new Date(value).toISOString() : null)
+
 /** A date for an <input type="date">, or '' when there is none. */
 export const toInputDate = (value) => (value ? String(value).slice(0, 10) : '')
 

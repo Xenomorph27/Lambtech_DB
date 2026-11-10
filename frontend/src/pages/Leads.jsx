@@ -214,7 +214,10 @@ export default function Leads() {
             <DetailRow label="Description">{selected.description}</DetailRow>
             <DetailRow label="Came from">
               {selected.response_id ? (
-                <Link to="/responses?tab=b" className="inline-flex items-center gap-1 text-accent hover:underline">
+                <Link
+                  to={'/responses?tab=b&id=' + selected.response_id}
+                  className="inline-flex items-center gap-1 text-accent hover:underline"
+                >
                   A positive reply <ArrowRight size={12} />
                 </Link>
               ) : (

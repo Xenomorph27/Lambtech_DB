@@ -230,3 +230,45 @@ def test_anonymize_contact(db):
     assert one(db, "select reason from suppressions where email = 'ravi@acme.com'")["reason"] == "erased"
     assert one(db, "select count(*) as n from emails_sent")["n"] == 1
     assert one(db, "select count(*) as n from responses")["n"] == 1
+
+
+# --- review fixes --------------------------------------------------------------
+
+
+def test_insert_as_bounced_adds_suppression(db):
+    """An email recorded after the fact, already bounced, must suppress the address."""
+    contact = make_contact(db)
+    email = make_email(db, contact, status="bounced")
+    assert email["bounced_at"] is not None
+    assert one(db, "select reason from suppressions where email = %s", [contact["email"]])["reason"] == "bounced"
+
+
+def test_delete_milestone_recomputes_status(db):
+    tx, (first, second) = make_tx_with_milestones(db)
+    mark(db, first, True)
+    rows(db, "delete from milestones where id = %s", [second["id"]])
+    assert tx_status(db, tx) == "completed"
+    rows(db, "delete from milestones where id = %s", [first["id"]])
+    # No milestones left: nothing to be "done", so the status is left alone.
+    assert tx_status(db, tx) == "completed"
+
+
+def test_anonymize_blanks_subjects_and_source_detail(db):
+    contact = make_contact(db, source_detail="linkedin.com/in/ravi-kumar", secondary_email="ravi.k@gmail.com")
+    email = make_email(db, contact, subject="Ravi, quick question about Acme")
+    response = make_response(db, email, subject="Re: Ravi, quick question about Acme")
+
+    rows(db, "select anonymize_contact(%s)", [contact["id"]])
+
+    assert "Ravi" not in one(db, "select subject from emails_sent where id = %s", [email["id"]])["subject"]
+    assert one(db, "select subject from responses where id = %s", [response["id"]])["subject"] is None
+    assert one(db, "select source_detail from contacts where id = %s", [contact["id"]])["source_detail"] is None
+    suppressed = {r["email"] for r in rows(db, "select email from suppressions")}
+    assert suppressed == {"ravi@acme.com", "ravi.k@gmail.com"}
+
+
+def test_anonymize_twice_is_harmless(db):
+    contact = make_contact(db)
+    rows(db, "select anonymize_contact(%s)", [contact["id"]])
+    rows(db, "select anonymize_contact(%s)", [contact["id"]])
+    assert [r["email"] for r in rows(db, "select email from suppressions")] == ["ravi@acme.com"]

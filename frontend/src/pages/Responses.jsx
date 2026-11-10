@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight, MessageSquareReply, Plus } from 'lucide-react'
 import { contacts as contactsApi, emailsSent as emailsApi, leads as leadsApi, responses as responsesApi } from '../api/resources.js'
 import { useAsync } from '../hooks/useAsync.js'
@@ -41,7 +41,19 @@ export default function Responses() {
   const emailById = useMemo(() => byId(emails.data), [emails.data])
   const contactName = (id) => contactById[id]?.full_name ?? null
 
-  const [tab, setTab] = useState('unclassified')
+  // Arriving from a lead ("Came from: a positive reply") lands on that tab
+  // with that reply open.
+  const [params, setParams] = useSearchParams()
+  const [tab, setTab] = useState(() => (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'unclassified'))
+  const wanted = params.get('id')
+  useEffect(() => {
+    if (!wanted || !responses.data) return
+    const hit = responses.data.find((r) => r.id === wanted)
+    if (hit) setSelected(hit)
+    setParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, responses.data])
+
   const [query, setQuery] = useState('')
   const [channel, setChannel] = useState('')
   const [selected, setSelected] = useState(null)
