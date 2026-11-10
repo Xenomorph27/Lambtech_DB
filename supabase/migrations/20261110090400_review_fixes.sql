@@ -71,7 +71,7 @@ create or replace function anonymize_contact(p_contact_id uuid) returns void
 language plpgsql as $$
 declare
   person contacts%rowtype;
-  placeholder citext := 'anonymized-' || replace(p_contact_id::text, '-', '') || '@invalid.local';
+  placeholder extensions.citext := 'anonymized-' || replace(p_contact_id::text, '-', '') || '@invalid.local';
 begin
   select * into person from contacts where id = p_contact_id;
   if person.id is null then

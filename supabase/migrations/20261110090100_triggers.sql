@@ -178,8 +178,8 @@ end $$;
 create or replace function anonymize_contact(p_contact_id uuid) returns void
 language plpgsql as $$
 declare
-  current_email citext;
-  placeholder citext := 'anonymized-' || replace(p_contact_id::text, '-', '') || '@invalid.local';
+  current_email extensions.citext;
+  placeholder extensions.citext := 'anonymized-' || replace(p_contact_id::text, '-', '') || '@invalid.local';
 begin
   select email into current_email from contacts where id = p_contact_id;
   if current_email is null then
