@@ -18,12 +18,12 @@ a thin, authenticated door to it; the screens only show what it says.
 ## Secrets: where each one lives
 
 Never commit any of these. Each is typed once, into the place listed.
+(The Supabase publishable key is public and lives in `frontend/.env.production`.)
 
 | Value | Found in | Pasted into |
 |---|---|---|
 | Database password / session-pooler URL | Supabase › Connect › Session pooler | Render `lambtech-desk-api` › `DATABASE_URL` |
 | Staff emails | you decide | Render `lambtech-desk-api` › `STAFF_EMAILS` |
-| Publishable ("anon") key | Supabase › Project Settings › API | Vercel › `VITE_SUPABASE_ANON_KEY` |
 
 The publishable key is not a secret: it is meant for browser code and cannot
 read any table (RLS is on everywhere and nothing is granted to the API roles).
@@ -71,25 +71,19 @@ If the service name is taken, change it in `render.yaml` **and** in
 
 ## 3. Screens: Vercel
 
-Project `lambtechdb` → `https://lambtechdb.vercel.app`. Vercel › Project ›
-Settings:
+Vercel project `lambtech_db` → `https://lambtechdb.vercel.app`, connected to
+this repository, production branch `main`. Every push to `main` that changes
+`frontend/` deploys automatically.
 
-1. **General › Root Directory** = `frontend` (the app is not at the repo
-   root; without this Vercel finds nothing to build and serves a 404).
-   Framework preset Vite; `frontend/vercel.json` sets the build, output and
-   the single-page rewrite.
-2. **Environment Variables** (Production; all three are public by design):
-
-   | Name | Value |
-   |---|---|
-   | `VITE_API_BASE_URL` | `https://lambtech-desk-api.onrender.com` |
-   | `VITE_SUPABASE_URL` | `https://yxhnejjquxiretpxxxvm.supabase.co` |
-   | `VITE_SUPABASE_ANON_KEY` | Supabase › Project Settings › API › publishable key |
-
-3. **Git** › production branch `main`. Redeploy after changing the settings
-   above (Deployments › ⋯ › Redeploy): Vite bakes the `VITE_` values in at
-   build time, so a deployment made before they were set stays blank.
-4. Open the site: you should see the sign-in screen, not "Not configured".
+1. **Settings › Build and Deployment › Root Directory** = `frontend` (the app
+   is not at the repo root; without this Vercel finds nothing to build and
+   serves a 404). `frontend/vercel.json` sets the build, output and the
+   single-page rewrite.
+2. **No environment variables needed.** The three public values
+   (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) are
+   committed in `frontend/.env.production`. A variable set in Vercel would
+   override them; leave the list empty unless you mean to.
+3. Open the site: you should see the sign-in screen, not "Not configured".
 
 The API only accepts browser calls from `https://lambtechdb.vercel.app` and
 `http://localhost:5173` (`CORS_ORIGINS` in `render.yaml`). A custom domain
