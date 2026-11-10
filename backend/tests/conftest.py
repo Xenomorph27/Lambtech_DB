@@ -129,6 +129,7 @@ def make_email(conn, contact, **values):
         "emails_sent",
         **{
             "contact_id": contact["id"],
+            "to_email": contact["email"],
             "from_email": "ceo@lambtech.in",
             "kind": "outreach",
             "subject": "Hello",
@@ -141,7 +142,12 @@ def make_response(conn, email, **values):
     return insert(
         conn,
         "responses",
-        **{"email_sent_id": email["id"], "subject": "Re: Hello", **values},
+        **{
+            "contact_id": email["contact_id"],
+            "email_sent_id": email["id"],
+            "subject": "Re: Hello",
+            **values,
+        },
     )
 
 
