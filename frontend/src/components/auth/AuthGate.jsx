@@ -36,9 +36,10 @@ const linkType = () => {
 }
 
 export function AuthGate({ children }) {
-  // No demo mode: without the API and Supabase settings the desk cannot work,
-  // and saying so beats a wall of failed requests.
-  if (!API_CONFIGURED || !AUTH_ENABLED) return <NotConfigured />
+  // No demo mode: without the API the desk cannot work, and saying so beats a
+  // wall of failed requests.
+  if (!API_CONFIGURED) return <NotConfigured />
+  if (!AUTH_ENABLED) return <DevGate>{children}</DevGate>
   return <Gate>{children}</Gate>
 }
 
@@ -48,6 +49,35 @@ function NotConfigured() {
       <p className="text-sm text-ink-2">
         Set <code className="tnum">VITE_API_BASE_URL</code>, <code className="tnum">VITE_SUPABASE_URL</code> and{' '}
         <code className="tnum">VITE_SUPABASE_ANON_KEY</code>, then reload. See <code>.env.example</code>.
+      </p>
+    </Panel>
+  )
+}
+
+/**
+ * Supabase not configured on the frontend. The only way in is a backend that
+ * has AUTH_REQUIRED=false - a developer's own machine - and the backend says
+ * so itself through /me. Anything else is a configuration mistake, not a
+ * login screen.
+ */
+function DevGate({ children }) {
+  const [state, setState] = useState({ status: 'checking', message: null })
+  useEffect(() => {
+    http('/me')
+      .then((me) => setState({ status: me.auth === 'disabled' ? 'open' : 'locked', message: null }))
+      .catch((err) => setState({ status: err.status === 401 ? 'locked' : 'error', message: err.message }))
+  }, [])
+
+  if (state.status === 'checking') return <Splash label="Checking access" />
+  if (state.status === 'open') {
+    return <AuthContext.Provider value={{ email: 'local developer', signOut: null }}>{children}</AuthContext.Provider>
+  }
+  return (
+    <Panel title={state.status === 'locked' ? 'Login not configured' : 'Cannot reach the desk'} subtitle="frontend/.env.local">
+      <p className="text-sm text-ink-2">
+        {state.status === 'locked'
+          ? 'The API requires a staff login, but VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are not set here.'
+          : state.message}
       </p>
     </Panel>
   )
