@@ -2,7 +2,7 @@
 --
 -- Every table has a uuid primary key and created_at; tables that people edit
 -- also carry updated_at (kept current by a trigger in the next migration).
--- Email columns are citext so 'Ravi@Acme.com' and 'ravi@acme.com' are the
+-- Email columns are extensions.citext so 'Ravi@Acme.com' and 'ravi@acme.com' are the
 -- same address.
 
 create extension if not exists citext with schema extensions;
@@ -33,7 +33,7 @@ create table companies (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   name        text not null,
-  domain      citext unique,
+  domain      extensions.citext unique,
   industry    text,
   city        text,
   country     text default 'India',
@@ -47,8 +47,8 @@ create table contacts (
   updated_at          timestamptz not null default now(),
   company_id          uuid references companies (id) on delete set null,
   full_name           text not null,
-  email               citext not null unique,
-  secondary_email     citext,
+  email               extensions.citext not null unique,
+  secondary_email     extensions.citext,
   phone               text,
   secondary_phone     text,
   job_title           text,
@@ -65,8 +65,8 @@ create table emails_sent (
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   contact_id          uuid not null references contacts (id) on delete restrict,
-  to_email            citext not null,
-  from_email          citext not null,
+  to_email            extensions.citext not null,
+  from_email          extensions.citext not null,
   kind                email_kind not null,
   subject             text not null,
   body_text           text,
@@ -88,7 +88,7 @@ create table responses (
   email_sent_id       uuid references emails_sent (id) on delete restrict,
   channel             response_channel not null default 'email_reply',
   received_at         timestamptz not null default now(),
-  from_email          citext,
+  from_email          extensions.citext,
   subject             text,
   body_text           text,
   category            response_category not null default 'unclassified',
@@ -170,7 +170,7 @@ create index payments_transaction_id_idx on payments (transaction_id);
 create table suppressions (
   id         uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
-  email      citext not null unique,
+  email      extensions.citext not null unique,
   reason     suppression_reason not null,
   source     text
 );
