@@ -271,7 +271,7 @@ Same model as the Client Desk CRM:
 |---|---|---|
 | Database + staff logins | Supabase project `Lambtech` (ref `yxhnejjquxiretpxxxvm`, ap-south-1 Mumbai) | |
 | Backend (FastAPI) | Render web service, free plan | kept awake by a GitHub Actions ping to `/health` every 10 min, which also keeps the free Supabase project from pausing |
-| Frontend (React) | Render static site, free | never sleeps |
+| Frontend (React) | Vercel (lambtechdb.vercel.app), free | never sleeps |
 
 ### 10.2 Backend API
 

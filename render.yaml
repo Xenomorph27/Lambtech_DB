@@ -1,12 +1,12 @@
-# Render Blueprint for LambTech Desk: the API and the screens.
+# Render Blueprint for the LambTech Desk API.
 #
 # Render > New > Blueprint > pick this repository. Render reads this file,
-# creates both services, and asks for every value marked `sync: false` - those
+# creates the service, and asks for every value marked `sync: false` - those
 # are secrets or per-project values, typed into Render, never committed here.
 #
-# The database is NOT here: it lives in Supabase (project "Lambtech",
-# ap-south-1), and its schema is applied by Supabase's GitHub integration when
-# supabase/migrations changes on main. See DEPLOY.md.
+# Not here: the database (Supabase project "Lambtech", ap-south-1; schema
+# applied from supabase/migrations) and the screens (Vercel, built from
+# frontend/ with its own vercel.json). See DEPLOY.md.
 #
 # Free plan: the API sleeps after 15 minutes without traffic.
 # .github/workflows/keep-awake.yml pings /health every 10 minutes.
@@ -37,46 +37,7 @@ services:
       - key: STAFF_EMAILS # comma separated; at least your own email
         sync: false
 
-      # Where the screens are served from (the static site below), plus the
-      # local dev server so the live API can be used while developing.
+      # Where the screens are served from (Vercel), plus the local dev server
+      # so the live API can be used while developing.
       - key: CORS_ORIGINS
-        value: https://lambtech-desk.onrender.com,http://localhost:5173
-
-  # The screens: a static site built from frontend/. Free, never sleeps.
-  - type: web
-    name: lambtech-desk
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
-    autoDeploy: true
-    pullRequestPreviewsEnabled: false
-    # BrowserRouter: every path must get index.html so /leads works on refresh
-    # or from a shared link. Real files (/assets/*) are served before rewrites.
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-    envVars:
-      - key: NODE_VERSION
-        value: 22.12.0
-      # All three end up in the browser's JavaScript, by design. The
-      # publishable key cannot read any table (RLS is on everywhere and
-      # nothing is granted to the API roles); the backend's staff check is
-      # what protects the data.
-      - key: VITE_API_BASE_URL
-        value: https://lambtech-desk-api.onrender.com
-      - key: VITE_SUPABASE_URL
-        value: https://yxhnejjquxiretpxxxvm.supabase.co
-      - key: VITE_SUPABASE_ANON_KEY # Supabase > Project Settings > API > publishable key
-        sync: false
+        value: https://lambtechdb.vercel.app,http://localhost:5173
