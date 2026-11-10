@@ -1,0 +1,35 @@
+# Keeps the LambTech Desk API on Render's free plan from falling asleep, and
+# gives the free Supabase project regular traffic so it is not paused for
+# inactivity.
+#
+# A free Render service sleeps after 15 minutes without traffic and takes
+# about a minute to wake, which staff would feel as a frozen screen. This
+# pings /health every 10 minutes. GitHub runs scheduled jobs on a best-effort
+# basis, sometimes a few minutes late, which is fine here.
+#
+# GitHub only runs scheduled workflows from the default branch. Delete this
+# file after moving the service to a paid plan.
+name: Keep desk API awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: |
+          for i in 1 2 3; do
+            if curl -fsS --max-time 90 https://lambtech-desk-api.onrender.com/health; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "API did not answer after 3 tries" >&2
+          exit 1
