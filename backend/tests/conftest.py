@@ -31,6 +31,15 @@ TEST_DB = os.environ.get(
 if "supabase" in TEST_DB or "pooler" in TEST_DB:
     raise RuntimeError("TEST_DATABASE_URL points at a hosted database. The tests wipe it. Refusing.")
 
+# The API under test reads its settings from the environment, so these must be
+# in place before anything imports backend/app.
+os.environ.update(
+    DATABASE_URL=TEST_DB,
+    AUTH_REQUIRED="true",
+    SUPABASE_URL="https://testproject.supabase.co",
+    STAFF_EMAILS="ceo@lambtech.in",
+)
+
 # Supabase gives every new table in public to anon and authenticated by
 # default. The bootstrap copies that, so the RLS migration's revokes are tested
 # against the same starting point the live project has.
@@ -161,3 +170,50 @@ def make_transaction(conn, lead, **values):
         "transactions",
         **{"lead_id": lead["id"], "title": "AI audit", "total_amount": 100000, **values},
     )
+
+
+# --- API client -------------------------------------------------------------
+#
+# Staff tokens are signed with a throwaway key pair and the app's JWKS lookup
+# is replaced with one that returns its public half, so the auth path runs for
+# real (signature, expiry, audience, issuer) without talking to Supabase.
+
+import time  # noqa: E402
+
+import jwt  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric import ec  # noqa: E402
+
+ISSUER = os.environ["SUPABASE_URL"] + "/auth/v1"
+STAFF_EMAIL = "ceo@lambtech.in"
+PRIVATE_KEY = ec.generate_private_key(ec.SECP256R1())
+OTHER_KEY = ec.generate_private_key(ec.SECP256R1())
+
+
+class _FakeJWKS:
+    def get_signing_key_from_jwt(self, token):
+        class Key:
+            key = PRIVATE_KEY.public_key()
+
+        return Key()
+
+
+def token(email=STAFF_EMAIL, key=PRIVATE_KEY, exp_in=3600, aud="authenticated"):
+    now = int(time.time())
+    claims = {"sub": "user-1", "email": email, "aud": aud, "iss": ISSUER, "iat": now, "exp": now + exp_in}
+    return jwt.encode(claims, key, algorithm="ES256")
+
+
+def bearer(**kw):
+    return {"Authorization": "Bearer " + token(**kw)}
+
+
+@pytest.fixture
+def client(db, monkeypatch):
+    """A test client for the API on top of the same fresh database as `db`."""
+    from fastapi.testclient import TestClient
+
+    import auth
+    from main import app
+
+    monkeypatch.setattr(auth, "_jwks", lambda: _FakeJWKS())
+    return TestClient(app)
