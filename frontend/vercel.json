@@ -2,10 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-
-  "//": "The app uses BrowserRouter, so the server must hand index.html to every path and let React Router decide; without this /leads is a 404 on refresh or from a shared link. Vercel matches real files before applying rewrites, so /assets/* is still served as files.",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-
   "headers": [
     {
       "source": "/(.*)",
