@@ -10,6 +10,8 @@ export function ConfirmDialog({
   body,
   confirmLabel = 'Delete',
   busy = false,
+  error = null,
+  danger = true,
 }) {
   useEffect(() => {
     if (!open) return
@@ -33,12 +35,17 @@ export function ConfirmDialog({
       >
         <h2 className="text-base font-medium text-ink">{title}</h2>
         <p className="mt-1.5 text-ink-2">{body}</p>
+        {error && (
+          <p className="mt-3 rounded-control bg-heat-1/12 px-3 py-2 text-xs text-heat-2" role="alert">
+            {error}
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <Button onClick={onCancel} disabled={busy}>
-            Keep
+            {danger ? 'Keep' : 'Cancel'}
           </Button>
-          <Button variant="danger" onClick={onConfirm} disabled={busy}>
-            {busy ? 'Deleting' : confirmLabel}
+          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} disabled={busy}>
+            {busy ? 'Working' : confirmLabel}
           </Button>
         </div>
       </div>

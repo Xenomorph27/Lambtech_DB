@@ -25,6 +25,7 @@ export function FormDrawer({
   subtitle,
   submitNew = 'Add',
   width = 'max-w-md',
+  error = null,
 }) {
   const [form, setForm] = useState(value ?? {})
   const [showErrors, setShowErrors] = useState(false)
@@ -116,6 +117,13 @@ export function FormDrawer({
           )
         })}
       </div>
+      {/* The database's refusal, in its own words: a duplicate email, a
+          suppressed address, a deadline before the start. */}
+      {error && (
+        <p className="mx-4 mb-4 rounded-control bg-heat-1/12 px-3 py-2 text-xs text-heat-2" role="alert">
+          {error}
+        </p>
+      )}
     </Drawer>
   )
 }
