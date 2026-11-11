@@ -56,3 +56,11 @@ def test_database_refusal_is_a_clear_503_with_cors(client, monkeypatch):
     assert response.status_code == 503
     assert "database" in response.json()["detail"].lower()
     assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+
+def test_staff_emails_accept_newlines_spaces_and_semicolons(monkeypatch):
+    """Render's editor invites one address per line; any common separator must work."""
+    from settings import settings
+
+    monkeypatch.setattr(settings, "staff_emails", "A@x.com\nb@x.com; c@x.com  d@x.com,\r\ne@x.com")
+    assert settings.staff_email_set == {"a@x.com", "b@x.com", "c@x.com", "d@x.com", "e@x.com"}

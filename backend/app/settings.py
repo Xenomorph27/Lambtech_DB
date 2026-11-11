@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,12 +25,13 @@ class Settings(BaseSettings):
     supabase_url: Optional[str] = None
     # Only for projects still signing tokens with the legacy shared secret (HS256).
     supabase_jwt_secret: Optional[str] = None
-    # Comma separated. Only these people may use the desk.
+    # Only these people may use the desk. Separate with commas, new lines,
+    # spaces or semicolons (Render's editor invites one address per line).
     staff_emails: str = ""
 
     @property
     def staff_email_set(self) -> set:
-        return {e.strip().lower() for e in self.staff_emails.split(",") if e.strip()}
+        return {e.lower() for e in re.split(r"[\s,;]+", self.staff_emails) if e}
 
 
 settings = Settings()
