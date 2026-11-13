@@ -32,6 +32,12 @@ export default function Overview() {
           <ErrorState error={stats.error} onRetry={stats.reload} />
         ) : (
           <StatRow>
+            <StatTile
+              label="New enquiries"
+              value={s ? s.enquiries_new : '…'}
+              sub="from the website"
+              accent={s?.enquiries_new ? '#ffb03a' : undefined}
+            />
             <StatTile label="Contacts" value={s ? s.contacts : '…'} sub={s ? s.companies + ' companies' : null} />
             <StatTile label="Emails sent" value={s ? s.emails_sent : '…'} sub={s ? s.emails_bounced + ' bounced' : null} />
             <StatTile label="Reply rate" value={s ? replyRate : '…'} sub={s ? replies + ' replies' : null} />
@@ -44,19 +50,27 @@ export default function Overview() {
         )}
 
         <div className="grid gap-px bg-rule md:grid-cols-3">
-          <Section icon={Inbox} title="Needs sorting" to="/responses" linkLabel="Open responses">
-            <p className="px-4 py-3 text-sm text-ink-2">
-              {s == null ? (
-                'Loading…'
-              ) : s.responses_unclassified === 0 ? (
-                'Every reply has been sorted into A or B.'
-              ) : (
-                <>
-                  <span className="tnum text-xl text-ink">{s.responses_unclassified}</span>{' '}
-                  {s.responses_unclassified === 1 ? 'reply is' : 'replies are'} waiting for a decision.
-                </>
-              )}
-            </p>
+          <Section icon={Inbox} title="Needs a person" to="/enquiries" linkLabel="Open enquiries">
+            <ul className="divide-y divide-rule/60 pb-2">
+              <li className="flex items-center gap-3 px-4 py-2 text-sm">
+                <span className="tnum w-8 text-xl text-ink">{s ? s.enquiries_new : '…'}</span>
+                <span className="min-w-0 flex-1 text-ink-2">
+                  new website {s?.enquiries_new === 1 ? 'enquiry' : 'enquiries'}
+                </span>
+                <Link to="/enquiries" className="text-xs text-accent hover:underline">
+                  Pick up
+                </Link>
+              </li>
+              <li className="flex items-center gap-3 px-4 py-2 text-sm">
+                <span className="tnum w-8 text-xl text-ink">{s ? s.responses_unclassified : '…'}</span>
+                <span className="min-w-0 flex-1 text-ink-2">
+                  {s?.responses_unclassified === 1 ? 'reply' : 'replies'} to sort into A or B
+                </span>
+                <Link to="/responses" className="text-xs text-accent hover:underline">
+                  Sort
+                </Link>
+              </li>
+            </ul>
           </Section>
 
           <Section icon={Flame} title="Hot leads" to="/leads" linkLabel="All leads">
