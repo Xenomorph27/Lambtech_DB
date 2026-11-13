@@ -107,3 +107,83 @@ alter table enquiry_intake_keys enable row level security;
 
 revoke all on table enquiries, enquiry_intake_keys, leads_view from anon, authenticated;
 revoke all on function enquiries_before_write() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- submit_enquiry: the one thing the public role may execute
+-- ---------------------------------------------------------------------------
+
+create or replace function submit_enquiry(
+  p_secret  text,
+  p_name    text,
+  p_email   text,
+  p_phone   text,
+  p_topic   text  default null,
+  p_page    text  default null,
+  p_meta    jsonb default '{}'::jsonb,
+  p_ip_hash text  default null
+) returns void
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_name  text  := btrim(coalesce(p_name, ''));
+  v_email text  := btrim(coalesce(p_email, ''));
+  v_phone text  := btrim(coalesce(p_phone, ''));
+  v_topic text  := nullif(btrim(coalesce(p_topic, '')), '');
+  v_page  text  := nullif(btrim(coalesce(p_page, '')), '');
+  v_meta  jsonb := coalesce(p_meta, '{}'::jsonb);
+  v_digits integer;
+begin
+  -- Only the website's server knows the secret; the public key alone is not enough.
+  if p_secret is null or not exists (
+    select from enquiry_intake_keys
+     where sha256 = encode(sha256(convert_to(p_secret, 'UTF8')), 'hex')
+  ) then
+    raise exception 'intake_refused' using errcode = 'P0001';
+  end if;
+
+  if char_length(v_name) not between 1 and 200 then
+    raise exception 'invalid_enquiry: name' using errcode = 'P0001';
+  end if;
+  if char_length(v_email) > 254 or v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    raise exception 'invalid_enquiry: email' using errcode = 'P0001';
+  end if;
+  v_digits := char_length(regexp_replace(v_phone, '\D', '', 'g'));
+  if char_length(v_phone) > 30 or v_digits not between 7 and 15 then
+    raise exception 'invalid_enquiry: phone' using errcode = 'P0001';
+  end if;
+  if char_length(coalesce(v_topic, '')) > 200 then
+    raise exception 'invalid_enquiry: topic' using errcode = 'P0001';
+  end if;
+  if char_length(coalesce(v_page, '')) > 300 then
+    raise exception 'invalid_enquiry: page' using errcode = 'P0001';
+  end if;
+  if jsonb_typeof(v_meta) <> 'object' or octet_length(v_meta::text) > 2048 then
+    raise exception 'invalid_enquiry: meta' using errcode = 'P0001';
+  end if;
+
+  -- A double click or a retried request: the first row stands.
+  if exists (
+    select from enquiries
+     where email = v_email::extensions.citext
+       and topic is not distinct from v_topic
+       and created_at > now() - interval '10 minutes'
+  ) then
+    return;
+  end if;
+
+  if p_ip_hash is not null and (
+    select count(*) from enquiries
+     where ip_hash = p_ip_hash and created_at > now() - interval '1 hour'
+  ) >= 5 then
+    raise exception 'rate_limited' using errcode = 'P0001';
+  end if;
+
+  insert into enquiries (name, email, phone, topic, page, meta, ip_hash)
+  values (v_name, v_email, v_phone, v_topic, v_page, v_meta, p_ip_hash);
+end $$;
+
+revoke all on function submit_enquiry(text, text, text, text, text, text, jsonb, text)
+  from public, anon, authenticated;
+grant execute on function submit_enquiry(text, text, text, text, text, text, jsonb, text) to anon;
