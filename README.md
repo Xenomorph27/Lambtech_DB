@@ -5,6 +5,7 @@ connected tables:
 
 | Table | Screen | What it holds |
 |---|---|---|
+| — `enquiries` | Enquiries | everyone who filled in the website form; confirming one creates its lead |
 | 1 `emails_sent` | Emails sent | every email that went out |
 | 2 `responses` | Responses | who wrote back — **A** (automated / no) and **B** (positive) |
 | 3 `leads` | Leads | the positive replies, numbered `LT-0001…`, with priority and status |
