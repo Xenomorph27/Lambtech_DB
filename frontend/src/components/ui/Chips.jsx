@@ -1,6 +1,7 @@
 import {
   categoryMeta,
   emailStatusMeta,
+  enquiryStatusMeta,
   leadStatusMeta,
   priorityMeta,
   suppressionReasonMeta,
@@ -66,6 +67,16 @@ export function ProgressBar({ pct, className = '' }) {
         <span className="block h-full rounded-full" style={{ width: value + '%', backgroundColor: 'var(--screen)' }} />
       </span>
       <span className="tnum text-xs text-ink-2">{value}%</span>
+    </span>
+  )
+}
+
+export function EnquiryStatus({ value }) {
+  const meta = enquiryStatusMeta(value)
+  return (
+    <span className={'inline-flex items-center gap-1.5 ' + meta.text}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {meta.label}
     </span>
   )
 }

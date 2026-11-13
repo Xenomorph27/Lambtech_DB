@@ -11,6 +11,7 @@
  */
 const SCREENS = {
   '/': { key: 'overview', label: 'Overview', accent: '#3d9bff' },
+  '/enquiries': { key: 'enquiries', label: 'Enquiries', accent: '#ffb03a' },
   '/emails': { key: 'emails', label: 'Emails sent', accent: '#d96bff' },
   '/responses': { key: 'responses', label: 'Responses', accent: '#ff7eb6' },
   '/leads': { key: 'leads', label: 'Leads', accent: '#17c8d4' },

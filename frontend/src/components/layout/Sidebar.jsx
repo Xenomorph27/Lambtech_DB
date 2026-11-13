@@ -7,6 +7,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   GaugeCircle,
+  Inbox,
   LogOut,
   MailX,
   MessageSquareReply,
@@ -28,6 +29,7 @@ const GROUPS = [
   {
     heading: 'Pipeline',
     items: [
+      { to: '/enquiries', label: 'Enquiries', icon: Inbox },
       { to: '/emails', label: 'Emails sent', icon: Send },
       { to: '/responses', label: 'Responses', icon: MessageSquareReply },
       { to: '/leads', label: 'Leads', icon: UserRound },
