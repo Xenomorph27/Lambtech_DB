@@ -31,7 +31,8 @@ OVERVIEW_SQL = text(
         where status <> 'cancelled')                                               as amount_paid,
       (select coalesce(sum(amount_remaining), 0) from transactions_view
         where status <> 'cancelled')                                               as amount_remaining,
-      (select count(*) from suppressions)                                          as suppressions
+      (select count(*) from suppressions)                                          as suppressions,
+      (select count(*) from enquiries where status = 'new')                        as enquiries_new
     """
 )
 

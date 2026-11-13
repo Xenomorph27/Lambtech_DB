@@ -14,6 +14,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Integer,
+    JSON,
     MetaData,
     Numeric,
     String,
@@ -113,6 +114,7 @@ _lead_columns = lambda: [  # noqa: E731 - shared by the table and its view
     Column("priority", String),
     Column("status", String),
     Column("description", Text),
+    Column("enquiry_id", Uuid),
 ]
 
 leads = Table("leads", metadata, *_base(*_lead_columns()))
@@ -194,5 +196,23 @@ suppressions = Table(
         Column("reason", String),
         Column("source", Text),
         updated=False,
+    ),
+)
+
+enquiries = Table(
+    "enquiries",
+    metadata,
+    *_base(
+        Column("name", Text),
+        Column("email", String),
+        Column("phone", Text),
+        Column("topic", Text),
+        Column("page", Text),
+        Column("meta", JSON),
+        Column("ip_hash", Text),
+        Column("status", String),
+        Column("notes", Text),
+        Column("contact_id", Uuid),
+        Column("handled_at", DateTime(timezone=True)),
     ),
 )
