@@ -302,3 +302,36 @@ def test_anonymize_blanks_the_persons_enquiries(db):
         assert after["name"] == "Erased" and "sharma" not in after["email"].lower()
         assert (after["phone"], after["meta"], after["notes"], after["ip_hash"]) == ("erased", {}, None, None)
     assert one(db, "select count(*) as n from enquiries")["n"] == 2  # rows are kept
+
+
+# --- final-review fixes --------------------------------------------------------
+
+
+def test_confirm_reuses_contact_even_without_extensions_on_search_path(db):
+    """Contact reuse must not depend on the connecting role's search_path (citext operators live in `extensions`)."""
+    existing = make_contact(db, email="priya@sharma.in")
+    e = make_enquiry(db)
+    rows(db, "set search_path = public")
+    lead_id = confirm(db, e, email="PRIYA@Sharma.in")
+    assert one(db, "select contact_id from leads where id = %s", [lead_id])["contact_id"] == existing["id"]
+    assert one(db, "select count(*) as n from contacts")["n"] == 1
+
+
+def test_anonymize_matches_enquiries_by_email_without_extensions_on_search_path(db):
+    contact = make_contact(db, email="priya@sharma.in")
+    stray = make_enquiry(db, email="PRIYA@Sharma.in")
+    rows(db, "set search_path = public")
+    rows(db, "select anonymize_contact(%s)", [contact["id"]])
+    assert one(db, "select name from enquiries where id = %s", [stray["id"]])["name"] == "Erased"
+
+
+def test_anonymize_closes_open_enquiries(db):
+    contact = make_contact(db, email="priya@sharma.in")
+    fresh = make_enquiry(db)
+    contacted = make_enquiry(db, topic="Another button")
+    set_status(db, contacted, "contacted")
+    rows(db, "select anonymize_contact(%s)", [contact["id"]])
+    statuses = {r["id"]: r["status"] for r in rows(db, "select id, status from enquiries")}
+    assert statuses == {fresh["id"]: "rejected", contacted["id"]: "rejected"}
+    with pytest.raises(pg.RaiseException):
+        confirm(db, {"id": fresh["id"]})

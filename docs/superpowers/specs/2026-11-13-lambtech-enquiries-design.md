@@ -277,7 +277,7 @@ and a lead for someone who phoned can already be added by hand.
 
 ## 7. Rollout order
 
-1. Database: merge, then `npx supabase@3.0.0 db push --remote`.
+1. Database: `npx supabase@3.0.0 db push --remote` from the branch, **before** the desk change is merged (the new desk needs the new tables; the old desk works with them).
 2. Generate the intake secret, register its hash (one SQL statement),
    and put the secret and the two Supabase values into Vercel.
 3. Desk API and screens deploy from `main` (Render, Vercel).

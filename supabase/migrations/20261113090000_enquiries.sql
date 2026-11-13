@@ -202,7 +202,11 @@ create or replace function confirm_enquiry(
   p_priority    lead_priority default 'warm',
   p_description text          default null
 ) returns uuid
-language plpgsql as $$
+language plpgsql
+-- Pinned: citext's operators live in `extensions`; without them on the path,
+-- email matching silently turns case-sensitive.
+set search_path = public, extensions, pg_temp
+as $$
 declare
   e       enquiries%rowtype;
   v_email extensions.citext := btrim(p_email);
@@ -220,6 +224,11 @@ begin
   end if;
   if e.status = 'spam' then
     raise exception 'This enquiry is marked as spam; change its status first' using errcode = 'P0001';
+  end if;
+  if e.email like 'anonymized-%@invalid.local'
+     or exists (select from suppressions where email = v_email and reason = 'erased') then
+    raise exception 'This person asked for their data to be erased; they cannot become a lead'
+      using errcode = 'P0001';
   end if;
 
   select id into c_id from contacts where email = v_email;
@@ -252,7 +261,9 @@ revoke all on function
 -- ---------------------------------------------------------------------------
 
 create or replace function anonymize_contact(p_contact_id uuid) returns void
-language plpgsql as $$
+language plpgsql
+set search_path = public, extensions, pg_temp
+as $$
 declare
   person contacts%rowtype;
   placeholder extensions.citext := 'anonymized-' || replace(p_contact_id::text, '-', '') || '@invalid.local';
@@ -283,7 +294,8 @@ begin
    where contact_id = p_contact_id;
   update enquiries
      set name = 'Erased', email = placeholder, phone = 'erased',
-         meta = '{}'::jsonb, notes = null, ip_hash = null
+         meta = '{}'::jsonb, notes = null, ip_hash = null,
+         status = case when status in ('new', 'contacted') then 'rejected'::enquiry_status else status end
    where contact_id = p_contact_id
       or email = person.email
       or (person.secondary_email is not null and email = person.secondary_email);

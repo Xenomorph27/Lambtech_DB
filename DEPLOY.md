@@ -118,6 +118,13 @@ The marketing site (`Xenomorph27/Lambtech_website`, Vercel project
 function, `submit_enquiry`. It is the only thing the public key can do, and
 it refuses callers that do not also present the intake secret.
 
+**Order matters.** Push the enquiries migration (`npx supabase@3.0.0 db push
+--remote`, from the branch) **before** merging the desk change to `main`.
+Render and Vercel deploy `main` automatically, and the new desk reads the
+`enquiries` table and `leads_view.enquiry_id`; without them Overview and
+Leads return errors. The migration only adds things, so the desk already
+live keeps working on the new schema.
+
 One-time setup, after the enquiries migration has been pushed:
 
 1. Run `.\scripts\new-intake-secret.ps1` in your own terminal.
