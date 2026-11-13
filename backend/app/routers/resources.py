@@ -42,7 +42,7 @@ responses = make_crud_router(
 
 leads = make_crud_router(
     "/leads", "Lead", m.leads, s.LeadRead, s.LeadCreate, s.LeadUpdate,
-    filters=("status", "priority", "contact_id"),
+    filters=("status", "priority", "contact_id", "enquiry_id"),
     read_table=m.leads_view,
 )
 

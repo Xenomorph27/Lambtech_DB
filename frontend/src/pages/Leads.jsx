@@ -149,7 +149,7 @@ export default function Leads() {
               <EmptyState
                 icon={UserRound}
                 title="No leads yet"
-                body="Marking a response Positive creates a lead here automatically. You can also add one by hand."
+                body="Confirming a website enquiry or marking a response Positive creates a lead here. You can also add one by hand."
                 action={
                   <Button variant="primary" onClick={() => openForm({ ...BLANK })}>
                     Add a lead
@@ -219,6 +219,13 @@ export default function Leads() {
                   className="inline-flex items-center gap-1 text-accent hover:underline"
                 >
                   A positive reply <ArrowRight size={12} />
+                </Link>
+              ) : selected.enquiry_id ? (
+                <Link
+                  to={'/enquiries?id=' + selected.enquiry_id}
+                  className="inline-flex items-center gap-1 text-accent hover:underline"
+                >
+                  A website enquiry <ArrowRight size={12} />
                 </Link>
               ) : (
                 <span className="text-ink-3">Entered by hand</span>

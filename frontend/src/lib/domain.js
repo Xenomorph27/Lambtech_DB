@@ -151,3 +151,18 @@ const REASON_META = {
   erased: { label: 'Erased (DPDP)', text: 'text-ink-3' },
 }
 export const suppressionReasonMeta = (value) => REASON_META[value] ?? { label: value ? String(value) : '—', text: 'text-ink-3' }
+
+/* --- Enquiries (website) ---------------------------------------------------- */
+
+export const ENQUIRY_STATUSES = ['new', 'contacted', 'confirmed', 'rejected', 'spam']
+
+const ENQUIRY_STATUS_META = {
+  new: { label: 'New', text: 'text-accent' },
+  contacted: { label: 'Contacted', text: 'text-heat-3' },
+  confirmed: { label: 'Confirmed', text: 'text-won' },
+  rejected: { label: 'Rejected', text: 'text-lost' },
+  spam: { label: 'Spam', text: 'text-ink-3 line-through decoration-ink-3/50' },
+}
+
+export const enquiryStatusMeta = (value) =>
+  ENQUIRY_STATUS_META[value] ?? { label: value ? String(value) : '—', text: 'text-ink-2' }

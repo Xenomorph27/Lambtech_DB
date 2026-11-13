@@ -11,6 +11,10 @@ export const transactions = makeResource('transactions', 'Transaction')
 export const milestones = makeResource('milestones', 'Milestone')
 export const payments = makeResource('payments', 'Payment')
 export const suppressions = makeResource('suppressions', 'Suppression')
+export const enquiries = makeResource('enquiries', 'Enquiry')
+
+/** Turn an enquiry into a contact + lead in one step. Resolves to the new lead. */
+export const confirmEnquiry = (id, payload) => http(`/enquiries/${id}/confirm`, { method: 'POST', body: payload })
 
 /** Erase a person for a DPDP request. The rows stay; the personal data goes. */
 export const anonymizeContact = (id) => http(`/contacts/${id}/anonymize`, { method: 'POST' })

@@ -217,6 +217,7 @@ class LeadRead(_ReadUpdated):
     serial_no: str
     contact_id: UUID
     response_id: Optional[UUID]
+    enquiry_id: Optional[UUID]
     priority: str
     status: str
     description: Optional[str]
@@ -348,6 +349,41 @@ class SuppressionRead(_Read):
     source: Optional[str]
 
 
+# --- enquiries ---------------------------------------------------------------
+
+EnquiryStatus = Literal["new", "contacted", "confirmed", "rejected", "spam"]
+# "confirmed" is reached only through the confirm action, which creates the lead.
+EnquiryOpenStatus = Literal["new", "contacted", "rejected", "spam"]
+
+
+class EnquiryUpdate(BaseModel):
+    status: Optional[EnquiryOpenStatus] = None
+    notes: Optional[str] = None
+
+
+class EnquiryConfirm(BaseModel):
+    full_name: str = Field(min_length=1)
+    email: str = Field(min_length=3)
+    phone: str = Field(min_length=5)
+    company_id: Optional[UUID] = None
+    job_title: Optional[str] = None
+    priority: LeadPriority = "warm"
+    description: Optional[str] = None
+
+
+class EnquiryRead(_ReadUpdated):
+    name: str
+    email: str
+    phone: str
+    topic: Optional[str]
+    page: Optional[str]
+    meta: dict
+    status: str
+    notes: Optional[str]
+    contact_id: Optional[UUID]
+    handled_at: Optional[datetime]
+
+
 # --- stats -------------------------------------------------------------------
 
 
@@ -368,3 +404,4 @@ class Overview(BaseModel):
     amount_paid: float
     amount_remaining: float
     suppressions: int
+    enquiries_new: int

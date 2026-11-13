@@ -3,7 +3,7 @@
 import psycopg2.errors as pg
 import pytest
 
-from conftest import make_contact, one, rows
+from conftest import as_role, make_contact, one, rows
 
 TABLES = [
     "companies",
@@ -15,18 +15,12 @@ TABLES = [
     "milestones",
     "payments",
     "suppressions",
+    "enquiries",
+    "enquiry_intake_keys",
 ]
 VIEWS = ["responses_a", "responses_b", "leads_view", "transactions_view"]
 
 
-def as_role(db, role, sql, params=None):
-    with db.cursor() as cur:
-        cur.execute(f"set role {role}")
-        try:
-            cur.execute(sql, params)
-            return cur.fetchall() if cur.description else []
-        finally:
-            cur.execute("reset role")
 
 
 @pytest.mark.parametrize("role", ["anon", "authenticated"])

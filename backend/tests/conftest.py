@@ -217,3 +217,24 @@ def client(db, monkeypatch):
 
     monkeypatch.setattr(auth, "_jwks", lambda: _FakeJWKS())
     return TestClient(app)
+
+
+def make_enquiry(conn, **values):
+    if "meta" in values:
+        values["meta"] = psycopg2.extras.Json(values["meta"])
+    return insert(
+        conn,
+        "enquiries",
+        **{"name": "Priya, Sharma & Co.", "email": "priya@sharma.in", "phone": "+91 98765 43210", **values},
+    )
+
+
+def as_role(db, role, sql, params=None):
+    """Run one statement as a Supabase API role, then switch back."""
+    with db.cursor() as cur:
+        cur.execute(f"set role {role}")
+        try:
+            cur.execute(sql, params)
+            return cur.fetchall() if cur.description else []
+        finally:
+            cur.execute("reset role")

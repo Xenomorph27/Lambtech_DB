@@ -111,11 +111,48 @@ subject lines become placeholders, message bodies are blanked, the address
 joins the do-not-email list as `erased`, and every count and payment stays
 correct.
 
+## 7. Website enquiries
+
+The marketing site (`Xenomorph27/Lambtech_website`, Vercel project
+`lambtech-website`) saves each form submission by calling one database
+function, `submit_enquiry`. It is the only thing the public key can do, and
+it refuses callers that do not also present the intake secret.
+
+**Order matters.** Push the enquiries migration (`npx supabase@3.0.0 db push
+--remote`, from the branch) **before** merging the desk change to `main`.
+Render and Vercel deploy `main` automatically, and the new desk reads the
+`enquiries` table and `leads_view.enquiry_id`; without them Overview and
+Leads return errors. The migration only adds things, so the desk already
+live keeps working on the new schema.
+
+One-time setup, after the enquiries migration has been pushed:
+
+1. Run `.\scripts\new-intake-secret.ps1` in your own terminal.
+2. Paste the SQL line it prints into Supabase › SQL Editor and run it.
+3. In Vercel › `lambtech-website` › Settings › Environment Variables
+   (Production and Preview), add:
+
+   | Name | Value |
+   |---|---|
+   | `SUPABASE_URL` | `https://yxhnejjquxiretpxxxvm.supabase.co` |
+   | `SUPABASE_PUBLISHABLE_KEY` | the publishable key (same one as in `frontend/.env.production`) |
+   | `ENQUIRY_INTAKE_SECRET` | the secret the script printed |
+
+4. Redeploy the website.
+
+Check: submit the form on the live site; the enquiry appears in the desk
+under Enquiries within seconds. If the form says it "isn't connected yet", a
+variable is missing; if it says "something went wrong", the secret's hash is
+not registered (repeat steps 1–3) or Supabase › Settings › API does not
+expose the `public` schema.
+
+New enquiries are **not** emailed to anyone yet: watch the "New enquiries"
+tile on Overview.
+
 ## Bucket list (not built yet)
 
 - Sending email from the desk (today each sent email is recorded by hand).
-- Pulling the lambtech.in "Book a Technical Review" form straight into
-  Responses as `inbound_form`.
+- Email or WhatsApp notification when a website enquiry arrives.
 - DNS: lambtech.in has no DMARC record; its site lists a contact address on
   another domain. Fix both before any outreach at volume.
 - hire.lambtech.in.
