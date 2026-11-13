@@ -187,3 +187,120 @@ end $$;
 revoke all on function submit_enquiry(text, text, text, text, text, text, jsonb, text)
   from public, anon, authenticated;
 grant execute on function submit_enquiry(text, text, text, text, text, text, jsonb, text) to anon;
+
+-- ---------------------------------------------------------------------------
+-- confirm_enquiry: enquiry -> contact (found or created) + lead, atomically
+-- ---------------------------------------------------------------------------
+
+create or replace function confirm_enquiry(
+  p_enquiry_id  uuid,
+  p_full_name   text,
+  p_email       text,
+  p_phone       text,
+  p_company_id  uuid          default null,
+  p_job_title   text          default null,
+  p_priority    lead_priority default 'warm',
+  p_description text          default null
+) returns uuid
+language plpgsql as $$
+declare
+  e       enquiries%rowtype;
+  v_email extensions.citext := btrim(p_email);
+  v_phone text := nullif(btrim(coalesce(p_phone, '')), '');
+  c_id    uuid;
+  l_id    uuid;
+begin
+  -- The row lock makes two simultaneous confirms take turns.
+  select * into e from enquiries where id = p_enquiry_id for update;
+  if e.id is null then
+    raise exception 'Enquiry not found' using errcode = 'P0002';
+  end if;
+  if e.status = 'confirmed' then
+    raise exception 'This enquiry is already confirmed' using errcode = 'P0001';
+  end if;
+  if e.status = 'spam' then
+    raise exception 'This enquiry is marked as spam; change its status first' using errcode = 'P0001';
+  end if;
+
+  select id into c_id from contacts where email = v_email;
+  if c_id is null then
+    insert into contacts (company_id, full_name, email, phone, job_title, source, source_detail)
+    values (p_company_id, btrim(p_full_name), v_email, v_phone,
+            nullif(btrim(coalesce(p_job_title, '')), ''),
+            'inbound_form', nullif(concat_ws(' · ', e.topic, e.page), ''))
+    returning id into c_id;
+  else
+    -- Someone we already know: keep their record, fill only a missing phone.
+    update contacts set phone = v_phone where id = c_id and phone is null and v_phone is not null;
+  end if;
+
+  insert into leads (contact_id, enquiry_id, priority, description)
+  values (c_id, e.id, coalesce(p_priority, 'warm'),
+          coalesce(nullif(btrim(coalesce(p_description, '')), ''), e.topic))
+  returning id into l_id;
+
+  update enquiries set status = 'confirmed', contact_id = c_id where id = e.id;
+  return l_id;
+end $$;
+
+revoke all on function
+  confirm_enquiry(uuid, text, text, text, uuid, text, lead_priority, text)
+  from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Erasure also covers enquiries
+-- ---------------------------------------------------------------------------
+
+create or replace function anonymize_contact(p_contact_id uuid) returns void
+language plpgsql as $$
+declare
+  person contacts%rowtype;
+  placeholder extensions.citext := 'anonymized-' || replace(p_contact_id::text, '-', '') || '@invalid.local';
+begin
+  select * into person from contacts where id = p_contact_id;
+  if person.id is null then
+    raise exception 'Contact % not found', p_contact_id using errcode = 'P0002';
+  end if;
+  if person.is_anonymized then
+    return;
+  end if;
+
+  insert into suppressions (email, reason, source)
+  values (person.email, 'erased', 'anonymize_contact')
+  on conflict (email) do update set reason = 'erased', source = 'anonymize_contact';
+
+  if person.secondary_email is not null then
+    insert into suppressions (email, reason, source)
+    values (person.secondary_email, 'erased', 'anonymize_contact')
+    on conflict (email) do update set reason = 'erased', source = 'anonymize_contact';
+  end if;
+
+  update emails_sent
+     set to_email = placeholder, subject = 'Erased', body_text = null
+   where contact_id = p_contact_id;
+  update responses
+     set from_email = null, subject = null, body_text = null
+   where contact_id = p_contact_id;
+  update enquiries
+     set name = 'Erased', email = placeholder, phone = 'erased',
+         meta = '{}'::jsonb, notes = null, ip_hash = null
+   where contact_id = p_contact_id
+      or email = person.email
+      or (person.secondary_email is not null and email = person.secondary_email);
+  update contacts
+     set full_name = 'Anonymized contact',
+         email = placeholder,
+         secondary_email = null,
+         phone = null,
+         secondary_phone = null,
+         job_title = null,
+         source_detail = null,
+         notes = null,
+         is_anonymized = true
+   where id = p_contact_id;
+end $$;
+
+revoke all on function anonymize_contact(uuid) from public, anon, authenticated;
+
+-- Tell Supabase's API layer about the new function straight away.
+notify pgrst, 'reload schema';

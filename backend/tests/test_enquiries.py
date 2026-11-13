@@ -203,3 +203,102 @@ def test_anon_still_cannot_read_what_it_submitted(db):
     submit(db)
     with pytest.raises(pg.InsufficientPrivilege):
         as_role(db, "anon", "select * from enquiries")
+
+
+# --- confirm_enquiry -----------------------------------------------------------
+
+
+def confirm(db, enquiry, full_name="Priya Sharma", email="priya@sharma.in", phone="+91 98765 43210", **extra):
+    names = ["p_enquiry_id", "p_full_name", "p_email", "p_phone", *[f"p_{k}" for k in extra]]
+    marks = ", ".join(f"{n} => %s" for n in names)
+    return one(
+        db,
+        f"select confirm_enquiry({marks}) as lead_id",
+        [enquiry["id"], full_name, email, phone, *extra.values()],
+    )["lead_id"]
+
+
+def test_confirm_creates_contact_and_lead(db):
+    e = make_enquiry(db, topic="Book a call", page="/ca")
+    lead_id = confirm(db, e)
+
+    lead = one(db, "select * from leads where id = %s", [lead_id])
+    contact = one(db, "select * from contacts where id = %s", [lead["contact_id"]])
+    after = one(db, "select * from enquiries where id = %s", [e["id"]])
+
+    assert (lead["enquiry_id"], lead["priority"], lead["status"], lead["description"]) == (e["id"], "warm", "new", "Book a call")
+    assert lead["serial_no"] == "LT-0001"
+    assert (contact["full_name"], contact["email"], contact["phone"]) == ("Priya Sharma", "priya@sharma.in", "+91 98765 43210")
+    assert (contact["source"], contact["source_detail"]) == ("inbound_form", "Book a call · /ca")
+    assert (after["status"], after["contact_id"]) == ("confirmed", contact["id"])
+    assert after["handled_at"] is not None
+
+
+def test_confirm_takes_priority_description_company_and_title(db):
+    company = insert(db, "companies", name="Sharma & Co.")
+    e = make_enquiry(db)
+    lead_id = confirm(db, e, company_id=company["id"], job_title="Partner", priority="hot", description="Wants 2B recon")
+    lead = one(db, "select * from leads_view where id = %s", [lead_id])
+    assert (lead["priority"], lead["description"], lead["company_name"]) == ("hot", "Wants 2B recon", "Sharma & Co.")
+
+
+def test_confirm_reuses_an_existing_contact_ignoring_case_and_spaces(db):
+    existing = make_contact(db, full_name="Priya S.", email="priya@sharma.in", phone=None)
+    e = make_enquiry(db)
+    lead_id = confirm(db, e, full_name="Someone Else", email="  PRIYA@Sharma.in ", phone="+91 98765 43210")
+
+    assert one(db, "select count(*) as n from contacts")["n"] == 1
+    contact = one(db, "select * from contacts where id = %s", [existing["id"]])
+    assert contact["full_name"] == "Priya S."  # an existing contact keeps its details
+    assert contact["phone"] == "+91 98765 43210"  # ... except an empty phone is filled
+    assert one(db, "select contact_id from leads where id = %s", [lead_id])["contact_id"] == existing["id"]
+
+
+def test_confirm_does_not_overwrite_an_existing_phone(db):
+    make_contact(db, email="priya@sharma.in", phone="111")
+    confirm(db, make_enquiry(db), phone="222")
+    assert one(db, "select phone from contacts")["phone"] == "111"
+
+
+def test_confirm_twice_gives_one_lead(db):
+    e = make_enquiry(db)
+    confirm(db, e)
+    with pytest.raises(pg.RaiseException) as err:
+        confirm(db, e)
+    assert "already confirmed" in str(err.value)
+    assert one(db, "select count(*) as n from leads")["n"] == 1
+
+
+def test_confirm_refuses_spam(db):
+    e = make_enquiry(db)
+    set_status(db, e, "spam")
+    with pytest.raises(pg.RaiseException):
+        confirm(db, e)
+    assert one(db, "select count(*) as n from leads")["n"] == 0
+
+
+def test_confirm_unknown_enquiry(db):
+    with pytest.raises(pg.NoDataFound):
+        confirm(db, {"id": "00000000-0000-0000-0000-000000000000"})
+
+
+@pytest.mark.parametrize("role", ["anon", "authenticated"])
+def test_api_roles_cannot_confirm(db, role):
+    e = make_enquiry(db)
+    with pytest.raises(pg.InsufficientPrivilege):
+        as_role(db, role, "select confirm_enquiry(%s, 'A', 'a@b.in', '9876543210')", [e["id"]])
+
+
+def test_anonymize_blanks_the_persons_enquiries(db):
+    e = make_enquiry(db, notes="called twice", meta={"referrer": "x"}, ip_hash="h")
+    lead_id = confirm(db, e)
+    stray = make_enquiry(db, email="PRIYA@sharma.in", topic="Another button")  # same person, never confirmed
+    contact_id = one(db, "select contact_id from leads where id = %s", [lead_id])["contact_id"]
+
+    rows(db, "select anonymize_contact(%s)", [contact_id])
+
+    for enquiry_id in (e["id"], stray["id"]):
+        after = one(db, "select * from enquiries where id = %s", [enquiry_id])
+        assert after["name"] == "Erased" and "sharma" not in after["email"].lower()
+        assert (after["phone"], after["meta"], after["notes"], after["ip_hash"]) == ("erased", {}, None, None)
+    assert one(db, "select count(*) as n from enquiries")["n"] == 2  # rows are kept
