@@ -405,6 +405,10 @@ class Overview(BaseModel):
     amount_remaining: float
     suppressions: int
     enquiries_new: int
+    outreach_paused: bool
+    outreach_sending_enabled: bool
+    outreach_sent_today: int
+    outreach_queued: int
 
 
 # --- outreach ------------------------------------------------------------------
@@ -493,3 +497,65 @@ class MessageUpdate(BaseModel):
 class QueueResult(BaseModel):
     queued_recipients: int
     stopped: int
+
+
+class EngineState(BaseModel):
+    paused: bool
+    paused_reason: Optional[str] = None
+    paused_at: Optional[datetime] = None
+    sending_enabled: bool
+    last_cycle_at: Optional[datetime] = None
+    last_inbox_check_at: Optional[datetime] = None
+    inbox_status: Literal["waiting", "ok", "error"]
+    inbox_detail: Optional[str] = None
+    engine_version: Optional[str] = None
+    queued: int
+    needs_review: int
+
+
+class EngineStateUpdate(BaseModel):
+    paused: bool
+    reason: Optional[str] = Field(None, max_length=300)
+
+
+class MailboxRead(BaseModel):
+    email: str
+    daily_cap: int
+    is_active: bool
+    sent_today: int
+    counter_date: Optional[date] = None
+    configured: bool
+
+
+class MailboxUpdate(BaseModel):
+    daily_cap: Optional[int] = Field(None, ge=0, le=500)
+    is_active: Optional[bool] = None
+
+
+class EventRead(BaseModel):
+    id: int
+    created_at: datetime
+    kind: str
+    detail: Optional[str] = None
+
+
+class ReviewItem(BaseModel):
+    id: UUID
+    step: int
+    status: MessageStatus
+    error: Optional[str] = None
+    subject: str
+    email: str
+    full_name: str
+    campaign: str
+    updated_at: datetime
+
+
+class ResolveAction(BaseModel):
+    action: Literal["retry", "skip"]
+
+
+class SentOrigin(BaseModel):
+    email_sent_id: UUID
+    campaign: str
+    step: int
