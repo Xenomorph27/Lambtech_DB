@@ -19,12 +19,22 @@ TABLES = [
     "enquiry_intake_keys",
 ]
 VIEWS = ["responses_a", "responses_b", "leads_view", "transactions_view"]
+OUTREACH_TABLES = [
+    "outreach.campaigns",
+    "outreach.steps",
+    "outreach.recipients",
+    "outreach.messages",
+    "outreach.mailboxes",
+    "outreach.engine_state",
+    "outreach.inbox_seen",
+    "outreach.events",
+]
 
 
 
 
 @pytest.mark.parametrize("role", ["anon", "authenticated"])
-@pytest.mark.parametrize("relation", TABLES + VIEWS)
+@pytest.mark.parametrize("relation", TABLES + VIEWS + OUTREACH_TABLES)
 def test_api_roles_cannot_read(db, role, relation):
     make_contact(db)
     with pytest.raises(pg.InsufficientPrivilege):
@@ -64,3 +74,18 @@ def test_future_tables_get_no_default_grants(db):
 
 def test_backend_role_still_works(db):
     assert one(db, "select count(*) as n from contacts")["n"] == 0
+
+
+def test_rls_enabled_on_every_outreach_table(db):
+    off = rows(
+        db,
+        "select relname from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+        "where n.nspname = 'outreach' and c.relkind = 'r' and not c.relrowsecurity order by 1",
+    )
+    assert [r["relname"] for r in off] == []
+
+
+@pytest.mark.parametrize("role", ["anon", "authenticated"])
+def test_api_roles_cannot_touch_outreach_functions(db, role):
+    with pytest.raises(pg.InsufficientPrivilege):
+        as_role(db, role, "select outreach.recipients_before_write()")

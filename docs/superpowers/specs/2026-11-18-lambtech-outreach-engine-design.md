@@ -153,7 +153,7 @@ deploy, does nothing.
      sender's latest engine-sent email from **this mailbox** in the last 30 days.
      Mail that matches neither is not a reply. This matters because the mailbox also
      carries ordinary client mail, and clients are contacts too. It inserts the `responses` row with its
-     category. **Any reply** stops that recipient's remaining messages (`replied`;
+     category. **Any reply other than an auto-reply** stops that recipient's remaining messages (an auto-reply is logged and the sequence continues) (`replied`;
      unsent messages become `skipped`).
    - **Everything else** (unknown senders, newsletters) is recorded in `inbox_seen` as
      ignored and not stored.
