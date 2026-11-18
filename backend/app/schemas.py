@@ -433,3 +433,63 @@ class UploadReport(BaseModel):
     suppressed: int
     bad_domain: int
     unknown_tags: list[str]
+
+
+class CampaignSummary(BaseModel):
+    id: UUID
+    name: str
+    created_at: datetime
+    created_by: Optional[str] = None
+    recipients: int
+    drafts: int
+    queued: int
+    sent: int
+    replied: int
+    problems: int
+
+
+class CampaignStep(BaseModel):
+    step: int
+    subject_template: str
+    body_template: str
+    wait_days: int
+
+
+class CampaignDetail(BaseModel):
+    id: UUID
+    name: str
+    created_at: datetime
+    created_by: Optional[str] = None
+    steps: list[CampaignStep]
+
+
+class MessageRead(BaseModel):
+    id: UUID
+    step: int
+    status: MessageStatus
+    subject: str
+    body: str
+    due_at: Optional[datetime] = None
+    error: Optional[str] = None
+    email_sent_id: Optional[UUID] = None
+
+
+class RecipientRead(BaseModel):
+    id: UUID
+    status: RecipientStatus
+    stop_reason: Optional[str] = None
+    current_step: int
+    contact_id: UUID
+    full_name: str
+    email: str
+    messages: list[MessageRead]
+
+
+class MessageUpdate(BaseModel):
+    subject: Optional[str] = Field(None, min_length=1, max_length=300)
+    body: Optional[str] = Field(None, min_length=1, max_length=20000)
+
+
+class QueueResult(BaseModel):
+    queued_recipients: int
+    stopped: int

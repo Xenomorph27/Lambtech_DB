@@ -127,3 +127,81 @@ def test_csv_columns_preview(client):
 def test_outreach_routes_are_staff_only(client):
     assert client.post("/outreach/campaigns").status_code == 401
     assert client.get("/outreach/campaigns").status_code == 401
+
+
+def _campaign_id(client):
+    return upload(client).json()["campaign_id"]
+
+
+def test_list_and_detail(client):
+    cid = _campaign_id(client)
+    listed = client.get("/outreach/campaigns", headers=bearer()).json()
+    assert listed[0]["id"] == cid and listed[0]["recipients"] == 2 and listed[0]["drafts"] == 6
+    detail = client.get(f"/outreach/campaigns/{cid}", headers=bearer()).json()
+    assert [st["step"] for st in detail["steps"]] == [1, 2, 3]
+    recipients = client.get(f"/outreach/campaigns/{cid}/recipients", headers=bearer()).json()
+    assert {r["email"] for r in recipients} == {"ravi@acme.com", "priya@sharma.in"}
+    assert [m["step"] for m in recipients[0]["messages"]] == [1, 2, 3]
+
+
+def test_edit_a_draft_but_not_a_sent_message(client, db):
+    cid = _campaign_id(client)
+    message = client.get(f"/outreach/campaigns/{cid}/recipients", headers=bearer()).json()[0]["messages"][0]
+    res = client.patch(f"/outreach/messages/{message['id']}", headers=bearer(), json={"subject": "New subject"})
+    assert res.status_code == 200 and res.json()["subject"] == "New subject"
+    contact = one(db, "select * from contacts where email = 'ravi@acme.com'")
+    email = make_email(db, contact)
+    rows(db, "update outreach.messages set status = 'sent', email_sent_id = %s where id = %s", [email["id"], message["id"]])
+    res = client.patch(f"/outreach/messages/{message['id']}", headers=bearer(), json={"body": "x"})
+    assert res.status_code == 409
+
+
+def test_queue_approves_drafts_and_makes_step_one_due(client, db):
+    cid = _campaign_id(client)
+    res = client.post(f"/outreach/campaigns/{cid}/queue", headers=bearer())
+    assert res.status_code == 200 and res.json() == {"queued_recipients": 2, "stopped": 0}
+    statuses = rows(db, "select step, status, due_at from outreach.messages order by step")
+    assert {m["status"] for m in statuses} == {"approved"}
+    assert all(m["due_at"] is not None for m in statuses if m["step"] == 1)
+    assert all(m["due_at"] is None for m in statuses if m["step"] > 1)
+    assert {r["status"] for r in rows(db, "select status from outreach.recipients")} == {"active"}
+
+
+def test_queue_stops_people_suppressed_since_upload(client, db):
+    cid = _campaign_id(client)
+    rows(db, "insert into suppressions (email, reason) values ('priya@sharma.in', 'unsubscribed')")
+    assert client.post(f"/outreach/campaigns/{cid}/queue", headers=bearer()).json() == {
+        "queued_recipients": 1, "stopped": 1}
+    stopped = one(db, "select r.* from outreach.recipients r join contacts c on c.id = r.contact_id "
+                      "where c.email = 'priya@sharma.in'")
+    assert stopped["status"] == "stopped"
+    assert one(db, "select count(*) as n from outreach.messages where recipient_id = %s and status = 'skipped'",
+               [stopped["id"]])["n"] == 3
+
+
+def test_queue_refuses_unfilled_tags(client):
+    steps = [{"step": 1, "subject": "Hi", "body": "About {mystery}", "wait_days": 1}]
+    cid = upload(client, steps=steps).json()["campaign_id"]
+    res = client.post(f"/outreach/campaigns/{cid}/queue", headers=bearer())
+    assert res.status_code == 422 and "{tag}" in res.json()["detail"]
+
+
+def test_stop_a_recipient_skips_their_unsent_messages(client, db):
+    cid = _campaign_id(client)
+    client.post(f"/outreach/campaigns/{cid}/queue", headers=bearer())
+    recipient = client.get(f"/outreach/campaigns/{cid}/recipients", headers=bearer()).json()[0]
+    assert client.post(f"/outreach/recipients/{recipient['id']}/stop", headers=bearer()).status_code == 204
+    assert one(db, "select status from outreach.recipients where id = %s", [recipient["id"]])["status"] == "stopped"
+    assert client.post(f"/outreach/recipients/{recipient['id']}/stop", headers=bearer()).status_code == 409
+
+
+def test_delete_only_before_anything_was_sent(client, db):
+    cid = _campaign_id(client)
+    contact = one(db, "select * from contacts where email = 'ravi@acme.com'")
+    email = make_email(db, contact)
+    rows(db, "update outreach.messages m set status = 'sent', email_sent_id = %s from outreach.recipients r "
+             "where r.id = m.recipient_id and r.contact_id = %s and m.step = 1", [email["id"], contact["id"]])
+    assert client.delete(f"/outreach/campaigns/{cid}", headers=bearer()).status_code == 409
+    cid2 = upload(client, "email\r\nnew@acme.com\r\n", name="Second").json()["campaign_id"]
+    assert client.delete(f"/outreach/campaigns/{cid2}", headers=bearer()).status_code == 204
+    assert client.get(f"/outreach/campaigns/{cid2}", headers=bearer()).status_code == 404
