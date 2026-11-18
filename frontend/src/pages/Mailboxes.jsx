@@ -17,6 +17,7 @@ export default function Mailboxes() {
   const review = useAsync(() => outreach.review(), [])
   const events = useAsync(() => outreach.events(), [])
   const [confirmUnpause, setConfirmUnpause] = useState(false)
+  const [retrying, setRetrying] = useState(null)
   const act = useSave()
   const s = state.data
 
@@ -98,7 +99,10 @@ export default function Mailboxes() {
                   <span className="text-ink">{item.full_name}</span> <span className="text-ink-3">· {item.email} · {item.campaign} · email {item.step}</span>
                   <span className="block truncate text-xs text-heat-2">{item.error}</span>
                 </span>
-                <Button size="sm" onClick={async () => { if (await act.run(() => outreach.resolve(item.id, 'retry'))) reloadAll() }}>Retry</Button>
+                {item.status === 'needs_review' && (
+                  <Button size="sm" onClick={async () => { if (await act.run(() => outreach.resolve(item.id, 'sent'))) reloadAll() }}>It was sent</Button>
+                )}
+                <Button size="sm" onClick={() => { act.clear(); setRetrying(item) }}>Send again</Button>
                 <Button size="sm" variant="ghost" onClick={async () => { if (await act.run(() => outreach.resolve(item.id, 'skip'))) reloadAll() }}>Skip</Button>
               </li>
             ))}
@@ -128,6 +132,21 @@ export default function Mailboxes() {
         confirmLabel="Unpause"
         title="Unpause the engine?"
         body="Queued emails will start going out within the daily caps, on weekdays 10:00–17:00 India time."
+      />
+      <ConfirmDialog
+        open={retrying !== null}
+        onCancel={() => setRetrying(null)}
+        onConfirm={async () => {
+          if (await act.run(() => outreach.resolve(retrying.id, 'retry'))) {
+            setRetrying(null)
+            reloadAll()
+          }
+        }}
+        busy={act.busy}
+        error={act.error}
+        confirmLabel="Send again"
+        title={retrying ? `Send email ${retrying.step} to ${retrying.email} again?` : ''}
+        body="Only if you are sure the first attempt did not reach them. An interrupted send may have gone out without a copy in the Sent folder; if unsure, choose Skip."
       />
     </Screen>
   )

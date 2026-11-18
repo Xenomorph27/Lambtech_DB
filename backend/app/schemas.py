@@ -552,7 +552,7 @@ class ReviewItem(BaseModel):
 
 
 class ResolveAction(BaseModel):
-    action: Literal["retry", "skip"]
+    action: Literal["retry", "skip", "sent"]
 
 
 class SentOrigin(BaseModel):

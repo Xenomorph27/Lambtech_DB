@@ -138,6 +138,31 @@ end $$;
 create trigger recipients_10_before_write before insert or update on outreach.recipients
   for each row execute function outreach.recipients_before_write();
 
+-- Erasure (anonymize_contact) reaches outreach too: the person's sequences
+-- stop and every copy of their name, address and company in the queue goes.
+create or replace function outreach.contacts_after_erase() returns trigger
+language plpgsql
+set search_path = public, extensions, pg_temp
+as $$
+begin
+  if new.is_anonymized and not old.is_anonymized then
+    update outreach.recipients
+       set status = case when status in ('pending', 'active') then 'stopped'::outreach.recipient_status else status end,
+           stop_reason = 'Erased on request',
+           merge = '{}'::jsonb
+     where contact_id = new.id;
+    update outreach.messages m
+       set status = case when m.status in ('draft', 'approved') then 'skipped'::outreach.message_status else m.status end,
+           subject = 'Erased', body = 'Erased', error = null
+      from outreach.recipients r
+     where r.id = m.recipient_id and r.contact_id = new.id;
+  end if;
+  return null;
+end $$;
+
+create trigger contacts_90_outreach_erase after update of is_anonymized on public.contacts
+  for each row execute function outreach.contacts_after_erase();
+
 create trigger campaigns_90_updated_at before update on outreach.campaigns
   for each row execute function public.set_updated_at();
 create trigger steps_90_updated_at before update on outreach.steps

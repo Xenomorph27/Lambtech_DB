@@ -78,6 +78,12 @@ def test_upload_skips_what_must_not_be_emailed(client, db):
     assert report["invalid"] == 1
 
 
+def test_a_person_already_in_another_unqueued_campaign_is_not_added_twice(client):
+    upload(client, name="First")
+    report = upload(client, name="Second").json()
+    assert report["added"] == 0 and report["already_contacted"] == 2
+
+
 def test_existing_contact_is_reused_and_only_empty_fields_filled(client, db):
     make_contact(db, email="ravi@acme.com", full_name="Ravi K (client)", source="manual")
     upload(client)

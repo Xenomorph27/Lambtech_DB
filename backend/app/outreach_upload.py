@@ -36,7 +36,7 @@ CONTACTED_SQL = text(
     """
     select 1 from emails_sent where contact_id = :cid and kind in ('outreach', 'follow_up')
     union all
-    select 1 from outreach.recipients where contact_id = :cid and status <> 'pending'
+    select 1 from outreach.recipients where contact_id = :cid
     limit 1
     """
 )

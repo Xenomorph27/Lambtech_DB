@@ -78,6 +78,16 @@ def test_a_logged_email_cannot_be_deleted_while_its_message_points_at_it(db):
         rows(db, "delete from emails_sent where id = %s", [email["id"]])
 
 
+def test_erasing_a_contact_stops_and_blanks_their_outreach(db):
+    contact = make_contact(db)
+    recipient = make_recipient(db, make_campaign(db), contact, status="active", merge={"first_name": "Ravi"})
+    make_message(db, recipient, 1, status="approved", subject="Hi Ravi", body="Dear Ravi at Acme")
+    rows(db, "select anonymize_contact(%s)", [contact["id"]])
+    assert one(db, "select status::text as status, merge from outreach.recipients") == {"status": "stopped", "merge": {}}
+    assert one(db, "select status::text as status, subject, body from outreach.messages") == {
+        "status": "skipped", "subject": "Erased", "body": "Erased"}
+
+
 def test_mailbox_cap_is_bounded(db):
     with pytest.raises(pg.CheckViolation):
         insert(db, "outreach.mailboxes", email="a@lambtech.in", daily_cap=-1)

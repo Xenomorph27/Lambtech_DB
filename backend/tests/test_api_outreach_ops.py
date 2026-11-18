@@ -57,6 +57,28 @@ def test_skip_and_refusals(client, db):
     assert res.status_code == 409
 
 
+def test_it_was_sent_marks_the_email_sent_and_schedules_the_next_step(client, db):
+    message, email = _stuck(db)
+    recipient_id = one(db, "select recipient_id from outreach.messages where id = %s", [message["id"]])["recipient_id"]
+    follow_up = make_message(db, {"id": recipient_id}, 2, status="approved")
+    res = client.post(f"/outreach/messages/{message['id']}/resolve", headers=bearer(), json={"action": "sent"})
+    assert res.status_code == 200 and res.json()["status"] == "sent" and res.json()["email_sent_id"] == str(email["id"])
+    assert one(db, "select status::text as s, sent_at from emails_sent where id = %s", [email["id"]])["s"] == "sent"
+    assert one(db, "select due_at from outreach.messages where id = %s", [follow_up["id"]])["due_at"] is not None
+
+
+def test_skip_keeps_the_link_so_a_reply_to_a_delivered_copy_still_matches(client, db):
+    message, email = _stuck(db)
+    res = client.post(f"/outreach/messages/{message['id']}/resolve", headers=bearer(), json={"action": "skip"})
+    assert res.status_code == 200 and res.json()["email_sent_id"] == str(email["id"])
+
+
+def test_it_was_sent_only_applies_to_interrupted_sends(client, db):
+    message, _ = _stuck(db, status="failed")
+    res = client.post(f"/outreach/messages/{message['id']}/resolve", headers=bearer(), json={"action": "sent"})
+    assert res.status_code == 409
+
+
 def test_sent_origins_name_campaign_and_step(client, db):
     contact = make_contact(db)
     email = make_email(db, contact)

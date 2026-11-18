@@ -117,22 +117,57 @@ def resolve_message(message_id: UUID, body: s.ResolveAction, db: Session = Depen
         raise HTTPException(status_code=409, detail="Only stuck or failed messages can be resolved.")
     if body.action == "retry" and current.recipient_status != "active":
         raise HTTPException(status_code=409, detail="This person's sequence has stopped, so it cannot be retried.")
-    if current.email_sent_id is not None:
+    if body.action == "sent" and (current.status != "needs_review" or current.email_sent_id is None):
+        raise HTTPException(status_code=409, detail="Only an interrupted send can be marked as sent.")
+    returning = "returning id, step, status, subject, body, due_at, error, email_sent_id"
+
+    if body.action == "sent":
+        # The person confirmed it went out: record it, then schedule the next step
+        # (the engine still only sends inside the window).
         db.execute(
-            text("update emails_sent set status = 'failed' where id = :id and status = 'queued'"),
+            text("update emails_sent set status = 'sent', sent_at = coalesce(sent_at, now()) where id = :id"),
             {"id": current.email_sent_id},
         )
-    row = db.execute(
-        text(
-            "update outreach.messages set "
-            "status = case when :a = 'retry' then 'approved'::outreach.message_status "
-            "else 'skipped'::outreach.message_status end, "
-            "email_sent_id = null, due_at = case when :a = 'retry' then now() else due_at end, "
-            "error = case when :a = 'retry' then null else 'Skipped by staff' end "
-            "where id = :id returning id, step, status, subject, body, due_at, error, email_sent_id"
-        ),
-        {"a": body.action, "id": message_id},
-    ).first()
+        row = db.execute(
+            text(f"update outreach.messages set status = 'sent', error = null where id = :id {returning}"),
+            {"id": message_id},
+        ).first()
+        db.execute(
+            text(
+                "update outreach.recipients r set current_step = m.step from outreach.messages m "
+                "where m.id = :id and r.id = m.recipient_id"
+            ),
+            {"id": message_id},
+        )
+        db.execute(
+            text(
+                "update outreach.messages nxt set due_at = now() + make_interval(days => s.wait_days) "
+                "from outreach.messages cur join outreach.recipients r on r.id = cur.recipient_id "
+                "join outreach.steps s on s.campaign_id = r.campaign_id and s.step = cur.step + 1 "
+                "where cur.id = :id and nxt.recipient_id = cur.recipient_id and nxt.step = cur.step + 1 "
+                "and nxt.status = 'approved'"
+            ),
+            {"id": message_id},
+        )
+    elif body.action == "skip":
+        # Keep the link: if a copy did go out, a reply to it must still match.
+        row = db.execute(
+            text(f"update outreach.messages set status = 'skipped', error = 'Skipped by staff' where id = :id {returning}"),
+            {"id": message_id},
+        ).first()
+    else:
+        if current.email_sent_id is not None:
+            db.execute(
+                text("update emails_sent set status = 'failed' where id = :id and status = 'queued'"),
+                {"id": current.email_sent_id},
+            )
+        row = db.execute(
+            text(
+                "update outreach.messages set status = 'approved', email_sent_id = null, due_at = now(), "
+                f"error = null where id = :id {returning}"
+            ),
+            {"id": message_id},
+        ).first()
     db.commit()
     return dict(row._mapping)
 
