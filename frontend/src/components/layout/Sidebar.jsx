@@ -9,6 +9,7 @@ import {
   GaugeCircle,
   Inbox,
   LogOut,
+  Mailbox,
   MailX,
   Megaphone,
   MessageSquareReply,
@@ -47,7 +48,10 @@ const GROUPS = [
   },
   {
     heading: 'Safety',
-    items: [{ to: '/suppressions', label: 'Do-not-email', icon: MailX }],
+    items: [
+      { to: '/mailboxes', label: 'Mailboxes', icon: Mailbox },
+      { to: '/suppressions', label: 'Do-not-email', icon: MailX },
+    ],
   },
 ]
 

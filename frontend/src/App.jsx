@@ -9,6 +9,7 @@ import Leads from './pages/Leads.jsx'
 import Transactions from './pages/Transactions.jsx'
 import Contacts from './pages/Contacts.jsx'
 import Companies from './pages/Companies.jsx'
+import Mailboxes from './pages/Mailboxes.jsx'
 import Suppressions from './pages/Suppressions.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="transactions" element={<Transactions />} />
         <Route path="contacts" element={<Contacts />} />
         <Route path="companies" element={<Companies />} />
+        <Route path="mailboxes" element={<Mailboxes />} />
         <Route path="suppressions" element={<Suppressions />} />
         <Route path="*" element={<NotFound />} />
       </Route>

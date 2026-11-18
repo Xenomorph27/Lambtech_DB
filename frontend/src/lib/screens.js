@@ -19,6 +19,7 @@ const SCREENS = {
   '/transactions': { key: 'transactions', label: 'Transactions', accent: '#55d94f' },
   '/contacts': { key: 'contacts', label: 'Contacts', accent: '#2fd08a' },
   '/companies': { key: 'companies', label: 'Companies', accent: '#7b85ff' },
+  '/mailboxes': { key: 'mailboxes', label: 'Mailboxes', accent: '#ff9f43' },
   '/suppressions': { key: 'suppressions', label: 'Do-not-email', accent: '#ff6f59' },
 }
 
