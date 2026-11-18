@@ -405,3 +405,31 @@ class Overview(BaseModel):
     amount_remaining: float
     suppressions: int
     enquiries_new: int
+
+
+# --- outreach ------------------------------------------------------------------
+
+RecipientStatus = Literal["pending", "active", "replied", "stopped", "completed", "bounced"]
+MessageStatus = Literal["draft", "approved", "sending", "sent", "failed", "skipped", "needs_review"]
+
+
+class CsvColumn(BaseModel):
+    name: str
+    tag: str
+
+
+class CsvPreview(BaseModel):
+    columns: list[CsvColumn]
+    rows: int
+    is_apollo: bool
+
+
+class UploadReport(BaseModel):
+    campaign_id: UUID
+    added: int
+    invalid: int
+    duplicates: int
+    already_contacted: int
+    suppressed: int
+    bad_domain: int
+    unknown_tags: list[str]

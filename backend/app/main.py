@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import errors
 from auth import require_staff
-from routers import enquiries, resources, stats
+from routers import enquiries, outreach, resources, stats
 from settings import settings
 
 app = FastAPI(
@@ -35,6 +35,7 @@ for router in resources.ALL:
     app.include_router(router, dependencies=STAFF_ONLY)
 app.include_router(stats.router, dependencies=STAFF_ONLY)
 app.include_router(enquiries.router, dependencies=STAFF_ONLY)
+app.include_router(outreach.router, dependencies=STAFF_ONLY)
 
 
 @app.get("/me", tags=["auth"])
