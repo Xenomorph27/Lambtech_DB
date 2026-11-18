@@ -10,6 +10,7 @@ import {
   Inbox,
   LogOut,
   MailX,
+  Megaphone,
   MessageSquareReply,
   Send,
   UserRound,
@@ -29,6 +30,7 @@ const GROUPS = [
   {
     heading: 'Pipeline',
     items: [
+      { to: '/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/enquiries', label: 'Enquiries', icon: Inbox },
       { to: '/emails', label: 'Emails sent', icon: Send },
       { to: '/responses', label: 'Responses', icon: MessageSquareReply },

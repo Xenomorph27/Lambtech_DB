@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell.jsx'
 import Overview from './pages/Overview.jsx'
+import Campaigns from './pages/Campaigns.jsx'
 import Enquiries from './pages/Enquiries.jsx'
 import Emails from './pages/Emails.jsx'
 import Responses from './pages/Responses.jsx'
@@ -17,6 +18,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<Overview />} />
         <Route path="enquiries" element={<Enquiries />} />
+        <Route path="campaigns" element={<Campaigns />} />
         <Route path="emails" element={<Emails />} />
         <Route path="responses" element={<Responses />} />
         <Route path="leads" element={<Leads />} />
