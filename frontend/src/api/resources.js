@@ -20,3 +20,32 @@ export const confirmEnquiry = (id, payload) => http(`/enquiries/${id}/confirm`, 
 export const anonymizeContact = (id) => http(`/contacts/${id}/anonymize`, { method: 'POST' })
 
 export const overviewStats = () => http('/stats/overview')
+
+const formOf = (fields) => {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(fields)) form.append(key, value)
+  return form
+}
+
+/** The outreach engine, through the desk API (campaigns, queue, controls). */
+export const outreach = {
+  campaigns: () => http('/outreach/campaigns'),
+  campaign: (id) => http(`/outreach/campaigns/${id}`),
+  recipients: (id) => http(`/outreach/campaigns/${id}/recipients`),
+  inspectCsv: (file) => http('/outreach/csv-columns', { method: 'POST', form: formOf({ file }) }),
+  createCampaign: ({ name, file, steps }) =>
+    http('/outreach/campaigns', { method: 'POST', form: formOf({ name, steps: JSON.stringify(steps), file }) }),
+  queue: (id) => http(`/outreach/campaigns/${id}/queue`, { method: 'POST' }),
+  removeCampaign: (id) => http(`/outreach/campaigns/${id}`, { method: 'DELETE' }),
+  editMessage: (id, payload) => http(`/outreach/messages/${id}`, { method: 'PATCH', body: payload }),
+  stopRecipient: (id) => http(`/outreach/recipients/${id}/stop`, { method: 'POST' }),
+  state: () => http('/outreach/state'),
+  setPaused: (paused, reason) => http('/outreach/state', { method: 'PATCH', body: { paused, reason } }),
+  mailboxes: () => http('/outreach/mailboxes'),
+  updateMailbox: (email, payload) =>
+    http(`/outreach/mailboxes/${encodeURIComponent(email)}`, { method: 'PATCH', body: payload }),
+  events: () => http('/outreach/events', { query: { limit: 50 } }),
+  review: () => http('/outreach/review'),
+  resolve: (id, action) => http(`/outreach/messages/${id}/resolve`, { method: 'POST', body: { action } }),
+  sentOrigins: () => http('/outreach/sent-origins'),
+}

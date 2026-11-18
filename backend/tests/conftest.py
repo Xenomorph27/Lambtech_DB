@@ -48,6 +48,7 @@ do $$ begin
   if not exists (select from pg_roles where rolname = 'anon') then create role anon nologin; end if;
   if not exists (select from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
 end $$;
+drop schema if exists outreach cascade;
 drop schema if exists public cascade;
 drop schema if exists extensions cascade;
 create schema public;
@@ -86,16 +87,19 @@ def db():
     conn.autocommit = True
     with conn.cursor() as cur:
         cur.execute(
-            "select tablename from pg_tables where schemaname = 'public'"
+            "select schemaname, tablename from pg_tables where schemaname in ('public', 'outreach')"
         )
-        tables = [row["tablename"] for row in cur.fetchall()]
+        tables = [f'"{row["schemaname"]}"."{row["tablename"]}"' for row in cur.fetchall()]
         if tables:
-            cur.execute("truncate " + ", ".join(f'"{t}"' for t in tables) + " restart identity cascade")
+            cur.execute("truncate " + ", ".join(tables) + " restart identity cascade")
         cur.execute(
             "select 1 from pg_class where relkind = 'S' and relname = 'lead_serial_seq'"
         )
         if cur.fetchone():
             cur.execute("alter sequence lead_serial_seq restart with 1")
+        cur.execute("select 1 from pg_namespace where nspname = 'outreach'")
+        if cur.fetchone():
+            cur.execute("insert into outreach.engine_state default values on conflict do nothing")
     yield conn
     conn.close()
 
@@ -238,3 +242,43 @@ def as_role(db, role, sql, params=None):
             return cur.fetchall() if cur.description else []
         finally:
             cur.execute("reset role")
+
+
+def make_campaign(conn, name="Q4 CA firms", steps=3):
+    campaign = insert(conn, "outreach.campaigns", name=name, created_by="ceo@lambtech.in")
+    waits = {1: 1, 2: 3, 3: 4}
+    for step in range(1, steps + 1):
+        insert(
+            conn,
+            "outreach.steps",
+            campaign_id=campaign["id"],
+            step=step,
+            subject_template=f"Step {step} for {{company}}",
+            body_template=f"Hi {{first_name}}, step {step}.",
+            wait_days=waits[step],
+        )
+    return campaign
+
+
+def make_recipient(conn, campaign, contact, **values):
+    if "merge" in values:
+        values["merge"] = psycopg2.extras.Json(values["merge"])
+    return insert(
+        conn,
+        "outreach.recipients",
+        **{"campaign_id": campaign["id"], "contact_id": contact["id"], **values},
+    )
+
+
+def make_message(conn, recipient, step, **values):
+    return insert(
+        conn,
+        "outreach.messages",
+        **{
+            "recipient_id": recipient["id"],
+            "step": step,
+            "subject": f"Subject {step}",
+            "body": f"Body {step}",
+            **values,
+        },
+    )

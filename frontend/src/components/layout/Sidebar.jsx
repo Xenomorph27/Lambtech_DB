@@ -9,7 +9,9 @@ import {
   GaugeCircle,
   Inbox,
   LogOut,
+  Mailbox,
   MailX,
+  Megaphone,
   MessageSquareReply,
   Send,
   UserRound,
@@ -29,6 +31,7 @@ const GROUPS = [
   {
     heading: 'Pipeline',
     items: [
+      { to: '/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/enquiries', label: 'Enquiries', icon: Inbox },
       { to: '/emails', label: 'Emails sent', icon: Send },
       { to: '/responses', label: 'Responses', icon: MessageSquareReply },
@@ -45,7 +48,10 @@ const GROUPS = [
   },
   {
     heading: 'Safety',
-    items: [{ to: '/suppressions', label: 'Do-not-email', icon: MailX }],
+    items: [
+      { to: '/mailboxes', label: 'Mailboxes', icon: Mailbox },
+      { to: '/suppressions', label: 'Do-not-email', icon: MailX },
+    ],
   },
 ]
 

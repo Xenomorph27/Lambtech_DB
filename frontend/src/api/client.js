@@ -28,7 +28,7 @@ export class ApiError extends Error {
  * surfacing "[object Object]". A 204 has no body, and calling .json() on it
  * throws, which would turn a successful delete into a visible error.
  */
-export async function http(path, { method = 'GET', body, query } = {}) {
+export async function http(path, { method = 'GET', body, query, form } = {}) {
   if (!API_CONFIGURED) {
     throw new ApiError(0, 'VITE_API_BASE_URL is not set, so the desk does not know where its API is.')
   }
@@ -52,7 +52,11 @@ export async function http(path, { method = 'GET', body, query } = {}) {
 
   let response
   try {
-    response = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    response = await fetch(url, {
+      method,
+      headers,
+      body: form !== undefined ? form : body === undefined ? undefined : JSON.stringify(body),
+    })
   } catch (cause) {
     // fetch only rejects when the request never completed: API down, wrong
     // URL, or CORS. Said plainly, because the browser's own message blames

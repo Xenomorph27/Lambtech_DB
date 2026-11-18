@@ -5,6 +5,7 @@ connected tables:
 
 | Table | Screen | What it holds |
 |---|---|---|
+| — `outreach` | Campaigns, Mailboxes | the hosted outreach engine's campaigns and queue; it logs into Emails sent and Responses |
 | — `enquiries` | Enquiries | everyone who filled in the website form; confirming one creates its lead |
 | 1 `emails_sent` | Emails sent | every email that went out |
 | 2 `responses` | Responses | who wrote back — **A** (automated / no) and **B** (positive) |

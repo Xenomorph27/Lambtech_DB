@@ -12,12 +12,14 @@
 const SCREENS = {
   '/': { key: 'overview', label: 'Overview', accent: '#3d9bff' },
   '/enquiries': { key: 'enquiries', label: 'Enquiries', accent: '#ffb03a' },
+  '/campaigns': { key: 'campaigns', label: 'Campaigns', accent: '#c58cff' },
   '/emails': { key: 'emails', label: 'Emails sent', accent: '#d96bff' },
   '/responses': { key: 'responses', label: 'Responses', accent: '#ff7eb6' },
   '/leads': { key: 'leads', label: 'Leads', accent: '#17c8d4' },
   '/transactions': { key: 'transactions', label: 'Transactions', accent: '#55d94f' },
   '/contacts': { key: 'contacts', label: 'Contacts', accent: '#2fd08a' },
   '/companies': { key: 'companies', label: 'Companies', accent: '#7b85ff' },
+  '/mailboxes': { key: 'mailboxes', label: 'Mailboxes', accent: '#ff9f43' },
   '/suppressions': { key: 'suppressions', label: 'Do-not-email', accent: '#ff6f59' },
 }
 

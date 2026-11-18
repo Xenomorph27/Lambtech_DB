@@ -32,7 +32,12 @@ OVERVIEW_SQL = text(
       (select coalesce(sum(amount_remaining), 0) from transactions_view
         where status <> 'cancelled')                                               as amount_remaining,
       (select count(*) from suppressions)                                          as suppressions,
-      (select count(*) from enquiries where status = 'new')                        as enquiries_new
+      (select count(*) from enquiries where status = 'new')                        as enquiries_new,
+      (select paused from outreach.engine_state)                                   as outreach_paused,
+      (select sending_enabled from outreach.engine_state)                          as outreach_sending_enabled,
+      (select coalesce(sum(sent_today), 0) from outreach.mailboxes
+        where counter_date = (now() at time zone 'Asia/Kolkata')::date)            as outreach_sent_today,
+      (select count(*) from outreach.messages where status = 'approved')           as outreach_queued
     """
 )
 
