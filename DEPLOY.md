@@ -151,9 +151,10 @@ tile on Overview.
 
 ## 8. Outreach engine
 
-The outreach bot runs on Render as a **background worker**,
-`lambtech-outreach-engine` (repo `Xenomorph27/emailauto-LT`, Starter plan, always on).
-It has no public address.
+The outreach bot runs on **Fly.io** as an always-on worker,
+`lambtech-outreach-engine` (repo `Xenomorph27/emailauto-LT`): one shared-cpu-1x
+256 MB machine in `bom` (Mumbai, next to the database), about $2/month. It has no
+public address. Render was not used: its free hours are taken by the desk API.
 
 **What it does every 5 minutes:**
 
@@ -168,19 +169,23 @@ from the branch) before merging the desk change, as in §7.
 
 **One-time setup:**
 
-1. Render › New › **Blueprint** › `Xenomorph27/emailauto-LT`. It creates the worker from
-   `render.yaml`.
-2. Type the `sync: false` values: `DATABASE_URL` (same value as the desk API) and each
-   mailbox's address and app password (`MAILBOX_1_EMAIL` / `MAILBOX_1_PASSWORD` …).
-3. Check the worker's log: `Outreach engine 2.0.0: N mailbox(es), sending disabled`,
-   then a `cycle {...}` line every 5 minutes. The desk's Mailboxes screen shows the
+1. Install flyctl (PowerShell: `pwsh -Command "iwr https://fly.io/install.ps1 -useb | iex"`)
+   and run `fly auth login`.
+2. In the engine repo folder: `fly launch --no-deploy --copy-config --name lambtech-outreach-engine`
+   (it reads `fly.toml`; if the name is taken, pick another and keep it).
+3. Set the secrets, typed by you, never committed:
+   `fly secrets set DATABASE_URL="<same value as the desk API on Render>"` and
+   `fly secrets set MAILBOX_1_EMAIL="..." MAILBOX_1_PASSWORD="..."` (… `MAILBOX_2_…`, `MAILBOX_3_…`).
+4. `fly deploy`, then `fly scale count 1` (exactly one machine).
+5. Check `fly logs`: `Outreach engine 2.0.0: N mailbox(es), sending disabled`, then a
+   `cycle {...}` line every 5 minutes. The desk's Mailboxes screen shows the
    mailboxes and "Last cycle … ago".
 
 **Safety:**
 
 - The engine starts **paused**, and with `SENDING_ENABLED=false` it reads and logs replies
   but sends nothing. Stage 2 turns sending on.
-- Mailbox passwords live only on Render.
+- Mailbox passwords live only in Fly secrets.
 - Never run the old desktop bot again: two copies would email people twice.
 
 ## Bucket list (not built yet)
