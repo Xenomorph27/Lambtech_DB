@@ -151,15 +151,21 @@ tile on Overview.
 
 ## 8. Outreach engine
 
-The outreach bot runs on **Fly.io** as an always-on worker,
-`lambtech-outreach-engine` (repo `Xenomorph27/emailauto-LT`): one shared-cpu-1x
-256 MB machine in `sin` (Singapore, the closest active Fly region to the Mumbai database; Fly retired `bom`), about $2/month. It has no
-public address. Render was not used: its free hours are taken by the desk API.
+The outreach engine (repo `Xenomorph27/emailauto-LT`) runs on a **GitHub Actions
+schedule**, free within the private repo's 2,000 Actions minutes a month:
 
-**What it does every 5 minutes:**
+- every 10 minutes on weekdays, 09:30–17:30 India time (the send window);
+- every 2 hours otherwise, so replies are still read at night and at weekends.
+
+**What each run does:** one cycle, then it exits:
 
 - reads the outreach mailboxes, and logs each reply under **Responses**;
 - sends what is due, logging each email under **Emails sent**.
+
+GitHub may start a run a few minutes late or skip one when busy; the next run
+catches up. Render was not used, because its free hours are taken by the desk API.
+Fly.io was tried, but its free trial stops machines after 5 minutes. The Fly setup stays
+in the engine repo (`fly.toml`) as the always-on option, at about $2/month with a card.
 
 **Where it is managed:** campaigns and the pause switch are on the desk's **Campaigns**
 and **Mailboxes** screens. The **Outreach** screen is the read-only summary: why the engine
@@ -171,23 +177,22 @@ from the branch) before merging the desk change, as in §7.
 
 **One-time setup:**
 
-1. Install flyctl (PowerShell: `pwsh -Command "iwr https://fly.io/install.ps1 -useb | iex"`)
-   and run `fly auth login`.
-2. In the engine repo folder: `fly launch --no-deploy --copy-config --name lambtech-outreach-engine`
-   (it reads `fly.toml`; if the name is taken, pick another and keep it).
-3. Set the secrets, typed by you, never committed:
-   `fly secrets set DATABASE_URL="<same value as the desk API on Render>"` and
-   `fly secrets set MAILBOX_1_EMAIL="..." MAILBOX_1_PASSWORD="..."` (… `MAILBOX_2_…`, `MAILBOX_3_…`).
-4. `fly deploy` (it creates exactly one machine; to set it again later: `fly scale count worker=1`).
-5. Check `fly logs`: `Outreach engine 2.0.0: N mailbox(es), sending disabled`, then a
-   `cycle {...}` line every 5 minutes. The desk's Mailboxes screen shows the
-   mailboxes and "Last cycle … ago".
+1. Add the repository secrets, typed by you, never committed: GitHub › `emailauto-LT` ›
+   **Settings › Secrets and variables › Actions › New repository secret**.
+   - `DATABASE_URL`: the same value as the desk API on Render.
+   - `MAILBOX_1_EMAIL` and `MAILBOX_1_PASSWORD`. Mailboxes 2 and 3 are optional.
+
+   Or run `gh secret set <NAME> --repo Xenomorph27/emailauto-LT`, which asks for the value
+   and hides it.
+2. Merge the workflow to `main`. A schedule runs only from `main`.
+3. **Actions › Outreach engine › Run workflow** runs a cycle at once. Its log ends with
+   `cycle {...}`, and the desk's Mailboxes screen shows "Last cycle … ago" with the inbox check.
 
 **Safety:**
 
 - The engine starts **paused**, and with `SENDING_ENABLED=false` it reads and logs replies
   but sends nothing. Stage 2 turns sending on.
-- Mailbox passwords live only in Fly secrets.
+- Mailbox passwords live only in GitHub repository secrets, or Fly secrets if Fly is used.
 - Never run the old desktop bot again: two copies would email people twice.
 
 ## Bucket list (not built yet)
