@@ -38,6 +38,12 @@ export default function Overview() {
               sub="from the website"
               accent={s?.enquiries_new ? '#ffb03a' : undefined}
             />
+            <StatTile
+              label="Outreach"
+              value={s ? (s.outreach_paused || !s.outreach_sending_enabled ? 'Paused' : 'Active') : '…'}
+              sub={s ? s.outreach_sent_today + ' sent today · ' + s.outreach_queued + ' queued' : null}
+              accent={s && !s.outreach_paused && s.outreach_sending_enabled ? '#00e093' : '#ff9f43'}
+            />
             <StatTile label="Contacts" value={s ? s.contacts : '…'} sub={s ? s.companies + ' companies' : null} />
             <StatTile label="Emails sent" value={s ? s.emails_sent : '…'} sub={s ? s.emails_bounced + ' bounced' : null} />
             <StatTile label="Reply rate" value={s ? replyRate : '…'} sub={s ? replies + ' replies' : null} />

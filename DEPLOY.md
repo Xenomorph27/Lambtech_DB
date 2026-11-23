@@ -149,9 +149,43 @@ expose the `public` schema.
 New enquiries are **not** emailed to anyone yet: watch the "New enquiries"
 tile on Overview.
 
+## 8. Outreach engine
+
+The outreach bot runs on Render as a **background worker**,
+`lambtech-outreach-engine` (repo `Xenomorph27/emailauto-LT`, Starter plan, always on).
+It has no public address.
+
+**What it does every 5 minutes:**
+
+- reads the outreach mailboxes, and logs each reply under **Responses**;
+- sends what is due, logging each email under **Emails sent**.
+
+**Where it is managed:** campaigns and the pause switch are on the desk's **Campaigns**
+and **Mailboxes** screens.
+
+**Order matters.** Push the outreach migration (`npx supabase@3.0.0 db push --remote`,
+from the branch) before merging the desk change, as in §7.
+
+**One-time setup:**
+
+1. Render › New › **Blueprint** › `Xenomorph27/emailauto-LT`. It creates the worker from
+   `render.yaml`.
+2. Type the `sync: false` values: `DATABASE_URL` (same value as the desk API) and each
+   mailbox's address and app password (`MAILBOX_1_EMAIL` / `MAILBOX_1_PASSWORD` …).
+3. Check the worker's log: `Outreach engine 2.0.0: N mailbox(es), sending disabled`,
+   then a `cycle {...}` line every 5 minutes. The desk's Mailboxes screen shows the
+   mailboxes and "Last cycle … ago".
+
+**Safety:**
+
+- The engine starts **paused**, and with `SENDING_ENABLED=false` it reads and logs replies
+  but sends nothing. Stage 2 turns sending on.
+- Mailbox passwords live only on Render.
+- Never run the old desktop bot again: two copies would email people twice.
+
 ## Bucket list (not built yet)
 
-- Sending email from the desk (today each sent email is recorded by hand).
+- Outreach Stage 2: bounce reading, one-click unsubscribe, postal address, verifier, then `SENDING_ENABLED=true`.
 - Email or WhatsApp notification when a website enquiry arrives.
 - DNS: lambtech.in has no DMARC record; its site lists a contact address on
   another domain. Fix both before any outreach at volume.

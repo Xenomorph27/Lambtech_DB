@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { MailWarning, Plus, Send } from 'lucide-react'
-import { contacts as contactsApi, emailsSent as emailsApi } from '../api/resources.js'
+import { contacts as contactsApi, emailsSent as emailsApi, outreach } from '../api/resources.js'
 import { useAsync } from '../hooks/useAsync.js'
 import { useSave } from '../hooks/useSave.js'
 import { PageHeader, Panel, Screen } from '../components/layout/PageHeader.jsx'
@@ -35,6 +35,11 @@ export default function Emails() {
   const contacts = useAsync(() => contactsApi.list(), [])
   const contactById = useMemo(() => byId(contacts.data), [contacts.data])
   const contactName = (id) => contactById[id]?.full_name ?? null
+  const origins = useAsync(() => outreach.sentOrigins(), [])
+  const originById = useMemo(
+    () => Object.fromEntries((origins.data ?? []).map((o) => [o.email_sent_id, o])),
+    [origins.data],
+  )
 
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('')
@@ -68,15 +73,29 @@ export default function Emails() {
       render: (e) => <span className="text-ink-2">{relativeTime(e.sent_at ?? e.created_at)}</span>,
     },
     {
+      key: 'campaign',
+      header: 'Campaign',
+      width: '14%',
+      sortValue: (e) => originById[e.id]?.campaign ?? null,
+      render: (e) =>
+        originById[e.id] ? (
+          <span className="text-ink-2">
+            {originById[e.id].campaign} · {originById[e.id].step}
+          </span>
+        ) : (
+          <span className="text-ink-3">By hand</span>
+        ),
+    },
+    {
       key: 'contact_id',
       header: 'Contact',
-      width: '17%',
+      width: '13%',
       sortValue: (e) => contactName(e.contact_id),
       render: (e) => <span className="text-ink">{contactName(e.contact_id) ?? '—'}</span>,
     },
     { key: 'to_email', header: 'To', width: '20%', render: (e) => <span className="text-ink-2">{e.to_email}</span> },
     { key: 'kind', header: 'Kind', width: '11%', render: (e) => <span className="text-ink-2">{emailKindLabel(e.kind)}</span> },
-    { key: 'subject', header: 'Subject', width: '28%' },
+    { key: 'subject', header: 'Subject', width: '18%' },
     {
       key: 'status',
       header: 'Status',
