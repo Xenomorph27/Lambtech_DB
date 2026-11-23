@@ -37,7 +37,7 @@ received is noted with its type**.
 |---|---|---|
 | Where records live | The desk's existing tables (`contacts`, `companies`, `emails_sent`, `responses`, `suppressions`) | One source of truth; the desk's triggers already enforce the do-not-email guard, bounce → suppression, unsubscribe → suppression, positive → lead |
 | Engine's working data | New schema `outreach` in the same database | The bot's own table names (`leads`, `emails`) collide with or duplicate the desk's |
-| Where the engine runs | Render **background worker**, Starter instance, one instance, Singapore | Always on; no public surface at all. Render's free plan gives 750 hours/month per workspace and the desk API already uses them |
+| Where the engine runs | **Fly.io** worker, one shared-cpu-1x 256 MB machine, region `sin` (Singapore; Fly retired Mumbai `bom`), no web service (changed from Render on 2026-11-23: Render's free hours are taken by the desk API; Fly is ~$2/month) | Always on; no public surface; one machine plus the advisory lock means one sender |
 | Where the screens live | The desk (Vercel), behind its staff login | The bot's dashboard is server-rendered with no login; online it would let anyone send email as LambTech. The desk already has login, Emails sent, Responses and the do-not-email list |
 | Who serves the screens' data | The desk API (Render, existing) | It already has staff auth, CORS, error mapping and tests. The engine needs no HTTP API |
 | How screens and engine talk | Through the database only | The desk writes campaigns, drafts, caps and the pause switch; the engine reads them and writes back results and status |
@@ -54,7 +54,7 @@ received is noted with its type**.
  Campaigns · Mailboxes   drafts, queue, caps,      ▼
  Emails sent · Responses pause switch       Supabase Postgres (Mumbai)
                                              public: contacts, companies,
- Outreach engine (Render worker, Starter)    emails_sent, responses,
+ Outreach engine (Fly.io worker, sin)        emails_sent, responses,
  every 5 min:  read inboxes ─────────────▶   suppressions, leads …
                send what is due ─────────▶   outreach: campaigns, steps,
    │  SMTP / IMAP                            recipients, messages,
@@ -66,7 +66,7 @@ received is noted with its type**.
   single source of truth. The engine's code lives in `Xenomorph27/emailauto-LT`,
   rebuilt as a worker: SMTP/IMAP, scheduling, classification, the one-off import. The
   bot's dashboard, desktop launcher, SQLite code and Gemini code are removed.
-- **Secrets.** Mailbox addresses and app passwords live only in the engine's Render
+- **Secrets.** Mailbox addresses and app passwords live only in the engine's Fly secrets
   environment (`MAILBOX_1_EMAIL` / `MAILBOX_1_PASSWORD` … up to 3), with
   `SMTP_HOST/PORT` and `IMAP_HOST/PORT`. Never in the database.
 - **Database access.** The engine connects like the desk API does: the session-pooler
@@ -136,7 +136,7 @@ Rules enforced in the database, with tests:
 ## 5. The engine's cycle
 
 The engine runs one cycle at start-up and every 5 minutes. A cycle runs only while it
-holds a Postgres advisory lock. A second copy, such as Render's old instance during a
+holds a Postgres advisory lock. A second copy, such as an old machine during a
 deploy, does nothing.
 
 1. **Mailboxes.** Upsert `outreach.mailboxes` from the environment. Reset `sent_today`
@@ -264,8 +264,8 @@ deploy, does nothing.
 
 **User tasks:**
 
-- create the Render worker (Starter instance) from the engine's `render.yaml`;
-- type the mailbox passwords, `DATABASE_URL` and `SENDER_POSTAL_ADDRESS` into Render;
+- create the Fly.io app from the engine's `fly.toml` and deploy it (DEPLOY.md §8);
+- set the mailbox passwords, `DATABASE_URL` and `SENDER_POSTAL_ADDRESS` as Fly secrets;
 - get the `outreach.db` copy;
 - strongly recommended before unpausing: a separate sending domain with SPF, DKIM and
   DMARC, warmed up for 2–3 weeks, and a DMARC record on lambtech.in.
@@ -309,8 +309,9 @@ deploy, does nothing.
   moves to the separate sending domain (§8).
 - **The one-time import** depends on the PC copy being stopped for good. The import
   report and the paused start are the safety net.
-- **Data-centre logins:** Render logging in to Titan from Singapore may trigger
+- **Data-centre logins:** Fly logging in to Titan from Singapore may trigger
   Titan's suspicious-login checks. App passwords, and a first login confirmed by the
   user, mitigate this.
-- **Render background worker pricing** is assumed to equal web-service Starter pricing
-  ($7/month on render.com/pricing, 2026-11-18). Check it when the worker is created.
+- **Fly.io pricing:** a shared-cpu-1x 256 MB machine is listed at about $2.19/month
+  (fly.io pricing update, effective 2026-10-01). Fly has no standing free tier for new
+  accounts; an older account's legacy free machines would cover it.
