@@ -153,7 +153,7 @@ tile on Overview.
 
 The outreach bot runs on **Fly.io** as an always-on worker,
 `lambtech-outreach-engine` (repo `Xenomorph27/emailauto-LT`): one shared-cpu-1x
-256 MB machine in `bom` (Mumbai, next to the database), about $2/month. It has no
+256 MB machine in `sin` (Singapore, the closest active Fly region to the Mumbai database; Fly retired `bom`), about $2/month. It has no
 public address. Render was not used: its free hours are taken by the desk API.
 
 **What it does every 5 minutes:**

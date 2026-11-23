@@ -37,7 +37,7 @@ received is noted with its type**.
 |---|---|---|
 | Where records live | The desk's existing tables (`contacts`, `companies`, `emails_sent`, `responses`, `suppressions`) | One source of truth; the desk's triggers already enforce the do-not-email guard, bounce → suppression, unsubscribe → suppression, positive → lead |
 | Engine's working data | New schema `outreach` in the same database | The bot's own table names (`leads`, `emails`) collide with or duplicate the desk's |
-| Where the engine runs | **Fly.io** worker, one shared-cpu-1x 256 MB machine, region `bom` (Mumbai), no web service (changed from Render on 2026-11-23: Render's free hours are taken by the desk API; Fly is ~$2/month and next to the database) | Always on; no public surface; one machine plus the advisory lock means one sender |
+| Where the engine runs | **Fly.io** worker, one shared-cpu-1x 256 MB machine, region `sin` (Singapore; Fly retired Mumbai `bom`), no web service (changed from Render on 2026-11-23: Render's free hours are taken by the desk API; Fly is ~$2/month) | Always on; no public surface; one machine plus the advisory lock means one sender |
 | Where the screens live | The desk (Vercel), behind its staff login | The bot's dashboard is server-rendered with no login; online it would let anyone send email as LambTech. The desk already has login, Emails sent, Responses and the do-not-email list |
 | Who serves the screens' data | The desk API (Render, existing) | It already has staff auth, CORS, error mapping and tests. The engine needs no HTTP API |
 | How screens and engine talk | Through the database only | The desk writes campaigns, drafts, caps and the pause switch; the engine reads them and writes back results and status |
@@ -54,7 +54,7 @@ received is noted with its type**.
  Campaigns · Mailboxes   drafts, queue, caps,      ▼
  Emails sent · Responses pause switch       Supabase Postgres (Mumbai)
                                              public: contacts, companies,
- Outreach engine (Fly.io worker, bom)        emails_sent, responses,
+ Outreach engine (Fly.io worker, sin)        emails_sent, responses,
  every 5 min:  read inboxes ─────────────▶   suppressions, leads …
                send what is due ─────────▶   outreach: campaigns, steps,
    │  SMTP / IMAP                            recipients, messages,
@@ -309,7 +309,7 @@ deploy, does nothing.
   moves to the separate sending domain (§8).
 - **The one-time import** depends on the PC copy being stopped for good. The import
   report and the paused start are the safety net.
-- **Data-centre logins:** Fly logging in to Titan from Mumbai may trigger
+- **Data-centre logins:** Fly logging in to Titan from Singapore may trigger
   Titan's suspicious-login checks. App passwords, and a first login confirmed by the
   user, mitigate this.
 - **Fly.io pricing:** a shared-cpu-1x 256 MB machine is listed at about $2.19/month
