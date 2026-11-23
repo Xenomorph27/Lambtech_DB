@@ -176,7 +176,7 @@ from the branch) before merging the desk change, as in §7.
 3. Set the secrets, typed by you, never committed:
    `fly secrets set DATABASE_URL="<same value as the desk API on Render>"` and
    `fly secrets set MAILBOX_1_EMAIL="..." MAILBOX_1_PASSWORD="..."` (… `MAILBOX_2_…`, `MAILBOX_3_…`).
-4. `fly deploy`, then `fly scale count 1` (exactly one machine).
+4. `fly deploy` (it creates exactly one machine; to set it again later: `fly scale count worker=1`).
 5. Check `fly logs`: `Outreach engine 2.0.0: N mailbox(es), sending disabled`, then a
    `cycle {...}` line every 5 minutes. The desk's Mailboxes screen shows the
    mailboxes and "Last cycle … ago".
