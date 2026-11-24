@@ -206,8 +206,15 @@ from the branch) before merging the desk change, as in §7.
 
 **Safety:**
 
-- The engine starts **paused**, and with `SENDING_ENABLED=false` it reads and logs replies
-  but sends nothing. Stage 2 turns sending on.
+- Two switches must both be on before anything is sent:
+  - **the send switch**, the engine repo's variable `SENDING_ENABLED` (unset = off). On since
+    2026-11-25. Off: `gh variable set SENDING_ENABLED --body false --repo Xenomorph27/emailauto-LT`;
+  - **the pause switch** on the desk's Mailboxes screen. The engine starts paused and pauses
+    itself when 5% of a day's emails bounce.
+- Every run reads bounce notices (engine 2.1.0): a hard bounce marks the email Bounced, puts
+  the address on the do-not-email list and stops that person's remaining emails.
+- Opt-out today is "reply with 'unsubscribe'" in the footer; the engine types the reply and
+  adds the address to the do-not-email list.
 - Mailbox passwords live only in GitHub repository secrets, or Fly secrets if Fly is used.
 - Never run the old desktop bot again: two copies would email people twice.
 
@@ -220,9 +227,11 @@ from the branch) before merging the desk change, as in §7.
 
 Do both. While stopped, the desk's Outreach screen shows "No engine run" in red.
 
+To stop **sending** only, but keep reading replies and bounces: pause on the Mailboxes screen.
+
 ## Bucket list (not built yet)
 
-- Outreach Stage 2: bounce reading, one-click unsubscribe, postal address, verifier, then `SENDING_ENABLED=true`.
+- Outreach, still to build: one-click unsubscribe (List-Unsubscribe header), postal-address footer, an address verifier at upload.
 - Email or WhatsApp notification when a website enquiry arrives.
 - DNS: lambtech.in has no DMARC record; its site lists a contact address on
   another domain. Fix both before any outreach at volume.
