@@ -559,3 +559,55 @@ class SentOrigin(BaseModel):
     email_sent_id: UUID
     campaign: str
     step: int
+
+
+# --- Outreach page (read-only summary) -------------------------------------
+
+
+class EngineStatusLine(BaseModel):
+    code: Literal[
+        "never_run", "stale", "no_mailboxes", "sending_disabled", "paused", "inbox_error",
+        "outside_window", "limit_reached", "nothing_due", "sending",
+    ]
+    tone: Literal["ok", "warn", "danger", "idle"]
+    headline: str
+    detail: str
+
+
+class OutreachKpis(BaseModel):
+    sent_today: int
+    sent_7d: int
+    sent_30d: int
+    bounced_today: int
+    bounced_30d: int
+    people_emailed_30d: int
+    people_replied_30d: int
+    due_now: int
+    queued: int
+    needs_review: int
+    cap_today: int
+    cap_left: int
+    bounce_pause_percent: float
+
+
+class OutreachDay(BaseModel):
+    day: date
+    sent: int
+    replies: int
+
+
+class OutreachUpcoming(BaseModel):
+    day: date
+    campaign: str
+    emails: int
+    follow_ups: int
+
+
+class OutreachDashboard(BaseModel):
+    state: EngineState
+    status: EngineStatusLine
+    kpis: OutreachKpis
+    replies_by_type: dict[str, int]
+    daily: list[OutreachDay]
+    upcoming: list[OutreachUpcoming]
+    waiting_follow_ups: int

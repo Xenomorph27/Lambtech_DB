@@ -48,4 +48,5 @@ export const outreach = {
   review: () => http('/outreach/review'),
   resolve: (id, action) => http(`/outreach/messages/${id}/resolve`, { method: 'POST', body: { action } }),
   sentOrigins: () => http('/outreach/sent-origins'),
+  dashboard: () => http('/outreach/dashboard'),
 }

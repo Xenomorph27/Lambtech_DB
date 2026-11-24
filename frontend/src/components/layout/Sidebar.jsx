@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { accentFor } from '../../lib/screens.js'
 import { useAuth } from '../auth/AuthGate.jsx'
 import {
+  Activity,
   Briefcase,
   Building2,
   ChevronsLeft,
@@ -31,6 +32,7 @@ const GROUPS = [
   {
     heading: 'Pipeline',
     items: [
+      { to: '/outreach', label: 'Outreach', icon: Activity },
       { to: '/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/enquiries', label: 'Enquiries', icon: Inbox },
       { to: '/emails', label: 'Emails sent', icon: Send },
