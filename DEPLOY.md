@@ -63,8 +63,10 @@ Project **Lambtech**, ref `yxhnejjquxiretpxxxvm`, region ap-south-1 (Mumbai).
 2. Fill in the `sync: false` values when asked (table above).
    `STAFF_EMAILS` must include your own email or nobody can sign in.
 3. Check `https://lambtech-desk-api.onrender.com/health` returns `{"status":"ok"}`.
-4. Free plan: `.github/workflows/keep-awake.yml` pings `/health` every
-   10 minutes so the service does not sleep (GitHub runs it from `main`).
+4. Free plan: Supabase pings `/health` every 10 minutes so the service does
+   not sleep (the `desk-api-keep-awake` pg_cron job, see §8). The GitHub
+   workflow `.github/workflows/keep-awake.yml` is kept as a backup, but
+   GitHub's free schedule fires it only every few hours.
 
 If the service name is taken, change it in `render.yaml` **and** in
 `keep-awake.yml` and Vercel's `VITE_API_BASE_URL` - all three must agree.
@@ -151,11 +153,15 @@ tile on Overview.
 
 ## 8. Outreach engine
 
-The outreach engine (repo `Xenomorph27/emailauto-LT`) runs on a **GitHub Actions
-schedule**, free within the private repo's 2,000 Actions minutes a month:
+The outreach engine (repo `Xenomorph27/emailauto-LT`) runs on **GitHub Actions**, free
+within the private repo's 2,000 Actions minutes a month. **Supabase keeps the time:**
+GitHub's own schedule drops most runs on a free account, so a `pg_cron` job in the
+database asks GitHub to start each run (migration `20261124090000_engine_timer.sql`):
 
 - every 10 minutes on weekdays, 09:30–17:30 India time (the send window);
 - every 2 hours otherwise, so replies are still read at night and at weekends.
+
+The workflow's own schedule stays as a 6-hourly backup.
 
 **What each run does:** one cycle, then it exits:
 
@@ -185,7 +191,17 @@ from the branch) before merging the desk change, as in §7.
    Or run `gh secret set <NAME> --repo Xenomorph27/emailauto-LT`, which asks for the value
    and hides it.
 2. Merge the workflow to `main`. A schedule runs only from `main`.
-3. **Actions › Outreach engine › Run workflow** runs a cycle at once. Its log ends with
+3. **Give Supabase a GitHub token**, so its timer can start runs. GitHub › Settings ›
+   Developer settings › Fine-grained tokens › Generate new token: repository
+   `emailauto-LT` only, permission **Actions: Read and write**. Then in Supabase ›
+   SQL Editor, run (with the token pasted in):
+
+   ```sql
+   select vault.create_secret('<token>', 'github_engine_dispatch');
+   ```
+
+   To replace it later: `select vault.update_secret(id, '<new token>') from vault.secrets where name = 'github_engine_dispatch';`
+4. **Actions › Outreach engine › Run workflow** runs a cycle at once. Its log ends with
    `cycle {...}`, and the desk's Mailboxes screen shows "Last cycle … ago" with the inbox check.
 
 **Safety:**
@@ -194,6 +210,15 @@ from the branch) before merging the desk change, as in §7.
   but sends nothing. Stage 2 turns sending on.
 - Mailbox passwords live only in GitHub repository secrets, or Fly secrets if Fly is used.
 - Never run the old desktop bot again: two copies would email people twice.
+
+**Stopping and starting the engine completely** (no runs at all, not even reply reading):
+
+| | Stop | Start |
+|---|---|---|
+| Supabase timer (SQL Editor) | `select outreach.set_engine_timer(false);` | `select outreach.set_engine_timer(true);` |
+| GitHub workflow | `gh workflow disable engine.yml --repo Xenomorph27/emailauto-LT` | `gh workflow enable engine.yml --repo Xenomorph27/emailauto-LT` |
+
+Do both. While stopped, the desk's Outreach screen shows "No engine run" in red.
 
 ## Bucket list (not built yet)
 
