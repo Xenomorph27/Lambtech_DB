@@ -162,7 +162,9 @@ public address. Render was not used: its free hours are taken by the desk API.
 - sends what is due, logging each email under **Emails sent**.
 
 **Where it is managed:** campaigns and the pause switch are on the desk's **Campaigns**
-and **Mailboxes** screens.
+and **Mailboxes** screens. The **Outreach** screen is the read-only summary: why the engine
+is or isn't sending right now, a red warning if no run has arrived for 3 hours, sent, reply
+and bounce rates for 30 days, the last 14 days, replies by type, and what is due next.
 
 **Order matters.** Push the outreach migration (`npx supabase@3.0.0 db push --remote`,
 from the branch) before merging the desk change, as in §7.

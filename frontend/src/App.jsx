@@ -10,6 +10,7 @@ import Transactions from './pages/Transactions.jsx'
 import Contacts from './pages/Contacts.jsx'
 import Companies from './pages/Companies.jsx'
 import Mailboxes from './pages/Mailboxes.jsx'
+import Outreach from './pages/Outreach.jsx'
 import Suppressions from './pages/Suppressions.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -19,6 +20,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<Overview />} />
         <Route path="enquiries" element={<Enquiries />} />
+        <Route path="outreach" element={<Outreach />} />
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="emails" element={<Emails />} />
         <Route path="responses" element={<Responses />} />

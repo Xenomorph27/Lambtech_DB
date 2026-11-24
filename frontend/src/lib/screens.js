@@ -12,6 +12,7 @@
 const SCREENS = {
   '/': { key: 'overview', label: 'Overview', accent: '#3d9bff' },
   '/enquiries': { key: 'enquiries', label: 'Enquiries', accent: '#ffb03a' },
+  '/outreach': { key: 'outreach', label: 'Outreach', accent: '#5ee0c8' },
   '/campaigns': { key: 'campaigns', label: 'Campaigns', accent: '#c58cff' },
   '/emails': { key: 'emails', label: 'Emails sent', accent: '#d96bff' },
   '/responses': { key: 'responses', label: 'Responses', accent: '#ff7eb6' },
