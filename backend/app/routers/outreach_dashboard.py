@@ -25,8 +25,10 @@ TZ = timezone(timedelta(hours=5, minutes=30))  # India keeps no daylight saving
 WINDOW_START = time(10, 0)
 WINDOW_END = time(17, 0)
 BOUNCE_PAUSE_PERCENT = 5.0
-# The schedule runs every 2 hours outside the window; GitHub can start a run late.
-STALE_AFTER = timedelta(hours=3)
+# The schedule runs every 10 minutes in the window and every 2 hours outside it;
+# GitHub can start a run late or skip one, so outside the window allow two gaps.
+STALE_IN_WINDOW = timedelta(hours=1)
+STALE_OUTSIDE = timedelta(hours=4, minutes=30)
 CATEGORIES = ("positive", "unclassified", "negative", "unsubscribe", "auto_reply")
 
 ENGINE_SENDS = (
@@ -134,9 +136,11 @@ def engine_status(state: dict, now: datetime, *, mailboxes: int, cap_left: int, 
     if last is None:
         return _status("never_run", "danger", "The engine has not run yet",
                        "Start a run from GitHub: emailauto-LT › Actions › Outreach engine › Run workflow.")
-    if now - last > STALE_AFTER:
-        hours = int((now - last).total_seconds() // 3600)
-        return _status("stale", "danger", f"No engine run for {hours} hours",
+    gap = now - last
+    if gap > (STALE_IN_WINDOW if _in_window(now) else STALE_OUTSIDE):
+        minutes = int(gap.total_seconds() // 60)
+        took = f"{minutes} minutes" if minutes < 120 else f"{minutes // 60} hours"
+        return _status("stale", "danger", f"No engine run for {took}",
                        "Runs should come every 10 minutes in the send window and every 2 hours otherwise. "
                        "Check emailauto-LT › Actions on GitHub for a failed or disabled workflow.")
     if mailboxes == 0:

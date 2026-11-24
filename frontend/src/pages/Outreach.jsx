@@ -66,7 +66,7 @@ export default function Outreach() {
               <StatTile
                 label="Bounce rate"
                 value={k ? percent(k.bounced_30d, k.sent_30d) : '…'}
-                sub={k ? `today ${percent(k.bounced_today, k.sent_today)} · auto-pause at ${k.bounce_pause_percent}%` : null}
+                sub={k ? `today ${percent(k.bounced_today, k.sent_today)} · pauses at ${k.bounce_pause_percent}% in a day` : null}
                 accent={bounceAccent(k)}
               />
               <StatTile
@@ -275,11 +275,11 @@ function percent(part, whole) {
   return (p > 0 && p < 10 ? p.toFixed(1) : Math.round(p)) + '%'
 }
 
+/** Red when today's rate would trip the engine's auto-pause (it needs 10 sends); amber when the month runs high. */
 function bounceAccent(k) {
-  if (!k || !k.sent_30d) return undefined
-  const p = (k.bounced_30d / k.sent_30d) * 100
-  if (p >= k.bounce_pause_percent) return 'var(--color-heat-1)'
-  if (p >= k.bounce_pause_percent / 2) return 'var(--color-heat-3)'
+  if (!k) return undefined
+  if (k.sent_today >= 10 && (k.bounced_today / k.sent_today) * 100 >= k.bounce_pause_percent) return 'var(--color-heat-1)'
+  if (k.sent_30d && (k.bounced_30d / k.sent_30d) * 100 >= k.bounce_pause_percent / 2) return 'var(--color-heat-3)'
   return undefined
 }
 

@@ -163,7 +163,7 @@ public address. Render was not used: its free hours are taken by the desk API.
 
 **Where it is managed:** campaigns and the pause switch are on the desk's **Campaigns**
 and **Mailboxes** screens. The **Outreach** screen is the read-only summary: why the engine
-is or isn't sending right now, a red warning if no run has arrived for 3 hours, sent, reply
+is or isn't sending right now, a red warning if no run has arrived for an hour in sending hours (4.5 hours outside them), sent, reply
 and bounce rates for 30 days, the last 14 days, replies by type, and what is due next.
 
 **Order matters.** Push the outreach migration (`npx supabase@3.0.0 db push --remote`,

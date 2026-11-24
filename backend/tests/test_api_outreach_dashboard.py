@@ -42,6 +42,18 @@ def test_status_stale_when_no_run_for_over_three_hours_beats_everything():
     assert "GitHub" in result["detail"]
 
 
+def test_stale_is_strict_in_sending_hours_and_patient_outside_them():
+    # In the window runs come every 10 minutes: an hour without one is a fault.
+    in_window = datetime(2026, 11, 24, 11, 5, tzinfo=IST)
+    assert _status(_state(last_cycle_at=in_window - timedelta(minutes=70)), now=in_window)["code"] == "stale"
+    assert _status(_state(last_cycle_at=in_window - timedelta(minutes=40)), now=in_window)["code"] != "stale"
+    # Outside it runs are 2 hours apart and GitHub may skip one: 4 hours is still fine.
+    night = datetime(2026, 11, 24, 23, 0, tzinfo=IST)
+    assert _status(_state(last_cycle_at=night - timedelta(hours=4)), now=night)["code"] == "outside_window"
+    stale = _status(_state(last_cycle_at=night - timedelta(hours=5)), now=night)
+    assert stale["code"] == "stale" and stale["headline"] == "No engine run for 5 hours"
+
+
 def test_status_follows_the_engine_gate_order():
     assert _status(mailboxes=0)["code"] == "no_mailboxes"
     assert _status(_state(sending_enabled=False, paused=True))["code"] == "sending_disabled"
